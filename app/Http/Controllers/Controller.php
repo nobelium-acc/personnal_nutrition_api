@@ -9,6 +9,14 @@
  *         email="support@example.com"
  *     )
  * )
+ * 
+ * @OA\SecurityScheme(
+ *     securityScheme="BearerToken",
+ *     type="http",
+ *     scheme="bearer",
+ *     bearerFormat="JWT",
+ *     description="Enter your API token here"
+ * )
  */
 
 namespace App\Http\Controllers;

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\MaladieChronique;
+use App\Models\Utilisateur;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -13,10 +14,34 @@ class MaladieChroniqueController extends Controller
     {
         $this->middleware('auth:api');
     }
-
+    
+    /**
+     * @OA\Post(
+     *     path="/api/user_infos/maladie-chronique",
+     *     tags={"User Infos"},
+     *     security={{"BearerToken":{}}},
+     *     summary="Associer maladie chorinique à l'utilisateur",
+     *     description="Associate a disease to the user",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"name", "email", "password"},
+     *             @OA\Property(property="type_maladie_chronique", type="string", example="Obésité")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="User infos saved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="User registered successfully"),
+     *             @OA\Property(property="user_id", type="integer", example=1)
+     *         )
+     *     ),
+     * )
+    */
     public function store(Request $request)
     {
-        $utilisateur = Auth::user();
+        $utilisateur = Utilisateur::find(Auth::id());
         
         if (!$utilisateur) {
             Log::warning('Tentative d\'association de maladie chronique sans utilisateur authentifié');

@@ -100,91 +100,6 @@ class UtilisateurController extends Controller
     }
 
     /**
-     * Login an existing user.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function login(Request $request)
-    {
-        // La validation est gérée par le middleware UtilisateurValidation
-
-        // Tentative d'authentification
-        if (Auth::attempt(['email' => $request->email, 'password' => $request->mot_de_passe])) {
-            $utilisateur = Auth::user();
-            $token = $utilisateur->createToken('auth_token')->plainTextToken;
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Connexion réussie',
-                'data' => $utilisateur,
-                'access_token' => $token,
-                'token_type' => 'Bearer',
-            ], 200);
-        }
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Identifiants invalides',
-        ], 401);
-    }
-
-
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function update(Request $request, $id)
-    {
-        // Vérifier si l'utilisateur est authentifié
-        if (!Auth::check()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Utilisateur non authentifié',
-            ], 401);
-        }
-
-        $utilisateur = Utilisateur::find($id);
-
-        if (!$utilisateur) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Utilisateur non trouvé',
-            ], 404);
-        }
-
-        // Valider uniquement les champs soumis pour la mise à jour
-        $validator = Validator::make($request->all(), [
-            'email' => 'sometimes|string|email|max:255|unique:utilisateurs,email,' . $id,
-            'mot_de_passe' => 'sometimes|string|min:10',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur de validation',
-                'errors' => $validator->errors(),
-            ], 400);
-        }
-
-        // Mise à jour des informations personnelles
-        if ($request->has('mot_de_passe')) {
-            $request->merge(['mot_de_passe' => Hash::make($request->mot_de_passe)]);
-        }
-
-        $utilisateur->update($request->only(['email', 'mot_de_passe']));
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Informations personnelles mises à jour avec succès',
-            'data' => $utilisateur,
-        ], 200);
-    }
-
-    /**
      * Update the chronic illness of the user.
      *
      * @param  \Illuminate\Http\Request  $request
@@ -195,7 +110,7 @@ class UtilisateurController extends Controller
     {
         // Vérifier si l'utilisateur est authentifié
         if (!Auth::check()) {
-            \Log::warning('Tentative d\'association de maladie chronique sans utilisateur authentifié');
+            Log::warning('Tentative d\'association de maladie chronique sans utilisateur authentifié');
             return response()->json([
                 'success' => false,
                 'message' => 'Utilisateur non authentifié',
@@ -213,7 +128,7 @@ class UtilisateurController extends Controller
         }
 
         if (!Auth::check()) {
-            \Log::warning('Tentative d\'association de maladie chronique sans utilisateur authentifié');
+            Log::warning('Tentative d\'association de maladie chronique sans utilisateur authentifié');
             return response()->json([
                 'success' => false,
                 'message' => 'Utilisateur non authentifié',

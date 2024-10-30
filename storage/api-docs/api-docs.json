@@ -171,6 +171,74 @@
                     }
                 }
             }
+        },
+        "/api/user_infos/maladie-chronique": {
+            "post": {
+                "tags": [
+                    "User Infos"
+                ],
+                "summary": "Associer maladie chorinique à l'utilisateur",
+                "description": "Associate a disease to the user",
+                "operationId": "a41743042b5b5e9cbe347a7e89238968",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "type_maladie_chronique": {
+                                        "type": "string",
+                                        "example": "Obésité"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "User infos saved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "User registered successfully"
+                                        },
+                                        "user_id": {
+                                            "type": "integer",
+                                            "example": 1
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "BearerToken": {
+                "type": "http",
+                "description": "Enter your API token here",
+                "bearerFormat": "JWT",
+                "scheme": "bearer"
+            }
         }
     }
 }

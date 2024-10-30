@@ -26,9 +26,12 @@ use App\Http\Middleware\AdminMiddleware;
     Route::get('/api/resource', 'ResourceController@index');
 });*/
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-    Route::post('/maladie-chronique', [MaladieChroniqueController::class, 'store']);
+// Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+//     return $request->user();
+   
+// });
+Route::middleware(['auth:sanctum'])->group(function() {
+    Route::post('/user_infos/maladie-chronique', [MaladieChroniqueController::class, 'store']);
 });
 Route::middleware('checkadmin')->group(function () {
     Route::delete('/utilisateurs/{id}', [UtilisateurController::class, 'destroy']);
@@ -82,7 +85,7 @@ Route::post('register', [AuthController::class, 'register']);
 Route::post('/register', [UtilisateurController::class, 'store'])->name('utilisateur.store')->middleware('utilisateur.validation');
 
 // Route pour la connexion
-Route::post('/login', [UtilisateurController::class, 'login'])->name('utilisateur.login')->middleware('utilisateur.validation');
+// Route::post('/login', [UtilisateurController::class, 'login'])->name('utilisateur.login')->middleware('utilisateur.validation');
 
-Route::post('login', [AuthController::class, 'login']);
-Route::post('register', [AuthController::class, 'register']);
+// Route::post('login', [AuthController::class, 'login']);
+// Route::post('register', [AuthController::class, 'register']);
