@@ -36,18 +36,18 @@ Route::middleware('checkadmin')->group(function () {
 /*Route::middleware(['validate.maladie.chronique'])->group(function () {
     Route::post('/maladie-chronique/update', [MaladieChroniqueController::class, 'update']);
 });*/
-Route::post('/logout', function () {
-    return app(\App\Http\Middleware\LogoutMiddleware::class)->handle(request(), function () {
-        return response()->json([
-            'success' => true,
-            'message' => 'Déconnexion réussie',
-        ], 200);
-    });
-})->middleware('auth:sanctum'); // Assurez-vous que l'utilisateur est authentifié
-Route::middleware('identify.comment.author')->get('/commentaire/{id}', [CommentaireController::class, 'show']);
-Route::middleware('check.admin')->group(function () {
-    Route::get('/commentaires', [CommentaireController::class, 'index']);
-});
+// Route::post('/logout', function () {
+//     return app(\App\Http\Middleware\LogoutMiddleware::class)->handle(request(), function () {
+//         return response()->json([
+//             'success' => true,
+//             'message' => 'Déconnexion réussie',
+//         ], 200);
+//     });
+// })->middleware('auth:sanctum'); // Assurez-vous que l'utilisateur est authentifié
+// Route::middleware('identify.comment.author')->get('/commentaire/{id}', [CommentaireController::class, 'show']);
+// Route::middleware('check.admin')->group(function () {
+//     Route::get('/commentaires', [CommentaireController::class, 'index']);
+// });
 Route::get('/user/responses', [ReponseController::class, 'index'])->middleware('user.responses');
 Route::post('/reponses', [ReponseController::class, 'store'])->middleware('validate.reponse');
 

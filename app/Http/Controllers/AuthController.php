@@ -9,6 +9,30 @@ use App\Models\Utilisateur;
 
 class AuthController extends Controller
 {
+    /**
+     * @OA\Post(
+     *     path="/api/login",
+     *     tags={"Authentification"},
+     *     summary="Login an user account",
+     *     description="Register a new user by providing the required information",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"name", "email", "password"},
+     *             @OA\Property(property="email", type="string", format="email", example="johndoe@example.com"),
+     *             @OA\Property(property="mot_de_passe", type="string", format="password", example="password123"),
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="User registered successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="User registered successfully"),
+     *             @OA\Property(property="user_id", type="integer", example=1)
+     *         )
+     *     ),
+     * )
+    */
     public function login(Request $request)
     {
         $request->validate([
@@ -36,13 +60,38 @@ class AuthController extends Controller
     }
 
     /**
-     * @OA\Get(
-     *     path="/api/v1/posts",
-     *     tags={"Posts"},
-     *     summary="Get list of posts",
-     *     description="Returns all posts",
-     *     @OA\Response(response=200, description="Successful operation"),
-     *     @OA\Response(response=401, description="Unauthorized")
+     * @OA\Post(
+     *     path="/api/register",
+     *     tags={"Authentification"},
+     *     summary="Create an user account",
+     *     description="Register a new user by providing the required information",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"name", "email", "password"},
+     *             @OA\Property(property="nom", type="string", example="HUGOSS"),
+     *             @OA\Property(property="prenom", type="string", example="Henry"),
+     *             @OA\Property(property="age", type="integer", example="12"),
+     *             @OA\Property(property="sexe", type="string", example="Homme"),
+     *             @OA\Property(property="poids", type="float", example="70"),
+     *             @OA\Property(property="taille", type="float", example="171"),
+     *             @OA\Property(property="tour_de_taille", type="float", example="34"),
+     *             @OA\Property(property="tour_de_hanche", type="float", example="25"),
+     *             @OA\Property(property="tour_du_cou", type="float", example="20"),
+     *             @OA\Property(property="niveau_d_activite_physique", type="string", example="Haut"),
+     *             @OA\Property(property="email", type="string", format="email", example="johndoe@example.com"),
+     *             @OA\Property(property="mot_de_passe", type="string", format="password", example="password123"),
+     *             @OA\Property(property="mot_de_passe_confirmation", type="string", format="password", example="password123")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="User registered successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="User registered successfully"),
+     *             @OA\Property(property="user_id", type="integer", example=1)
+     *         )
+     *     ),
      * )
     */
     public function register(Request $request)
