@@ -35,6 +35,16 @@ class AuthController extends Controller
         ], 200);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/api/v1/posts",
+     *     tags={"Posts"},
+     *     summary="Get list of posts",
+     *     description="Returns all posts",
+     *     @OA\Response(response=200, description="Successful operation"),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+    */
     public function register(Request $request)
     {
         $request->validate([
