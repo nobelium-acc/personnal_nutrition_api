@@ -218,7 +218,7 @@ class AuthController extends Controller
     {
         $request->validate([
             'email' => 'required|email',
-            'code' => 'required|numeric|digits:6',
+            'code' => 'required|numeric|digits:7',
         ]);
 
         $utilisateur = Utilisateur::where('email', $request->email)->first();
@@ -275,8 +275,7 @@ class AuthController extends Controller
     {
         $request->validate([
             'email' => 'required|email',
-            'password' => ['required','confirmed', Password::defaults()],
-            'code' => 'required|numeric|digits:7',
+            'password' => ['required','confirmed', Password::defaults()]
         ]);
 
         $utilisateur = Utilisateur::where('email', $request->email)->first();
