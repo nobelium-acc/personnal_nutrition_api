@@ -286,7 +286,7 @@ class AuthController extends Controller
             ], 401);
         }
         try {
-            $utilisateur->password = Hash::make($request->password);
+            $utilisateur->mot_de_passe = Hash::make($request->password);
             $utilisateur->save();
             return response()->json([
                 'success' => true,
