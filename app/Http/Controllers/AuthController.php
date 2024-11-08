@@ -2,10 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
+use App\Models\Utilisateur;
 use Illuminate\Http\Request;
+use App\Models\PasswordReset;
+use App\Mail\Auth\ResetPasswordMail;
+use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use App\Models\Utilisateur;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
@@ -136,5 +142,163 @@ class AuthController extends Controller
         ], 201);
     }
 
-    // Autres méthodes...
+    /**
+     * @OA\Post(
+     *     path="/api/auth/forgot-password",
+     *     tags={"Authentification"},
+     *     summary="Forgot yout password",
+     *     description="Reset user password - step 1",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"email"},
+     *             @OA\Property(property="email", type="string", format="email", example="johndoe@example.com")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="Mail with reset code sent successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="user_id", type="integer", example=1)
+     *         )
+     *     ),
+     * )
+    */
+    public function forgotPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        $utilisateur = Utilisateur::where('email', $request->email)->first();
+        if (!$utilisateur) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Mail invalide. Vérifiez et reessayez à nouveau !',
+            ], 401);
+        }
+        $code = $randomNumber = rand(1000000, 9999999);
+        $password_reset = PasswordReset::create([
+            'email' => $request->email,
+            'code' => $code,
+        ]);
+
+        Mail::to($request->email)->send(new ResetPasswordMail(['code' => $code]));
+        return response()->json([
+            'success' => true,
+            'message' => 'Mail de réinitialisation envoyé',
+            'data' => $utilisateur,
+        ], 200);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/auth/forgot-password/verify",
+     *     tags={"Authentification"},
+     *     summary="Forgot yout password",
+     *     description="Reset user password - step 2",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"code"},
+     *             @OA\Property(property="email", type="string", format="email", example="johndoe@example.com"),
+     *             @OA\Property(property="code", type="string", example="123456")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="Code correct",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="user_id", type="integer", example=1)
+     *         )
+     *     ),
+     * )
+    */
+    public function verifyResetCode(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'code' => 'required|numeric|digits:6',
+        ]);
+
+        $utilisateur = Utilisateur::where('email', $request->email)->first();
+        if (!$utilisateur) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Mail invalide. Vérifiez et reessayez à nouveau !',
+            ], 401);
+        }
+        $password_reset = PasswordReset::where('email', $request->email)
+                ->where('code', $request->code)
+                ->where('created_at', '>=', Carbon::now()->subHour())
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+        if ($password_reset) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Validation éffectuée !',
+                'data' => $utilisateur,
+            ], 200);
+        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Le code que vous avez saisi est invalide. Veuillez réessayer',
+        ], 500);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/auth/reset-password",
+     *     tags={"Authentification"},
+     *     summary="Forgot yout password",
+     *     description="Reset user password - step 3",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"code"},
+     *             @OA\Property(property="email", type="string", format="email", example="johndoe@example.com"),
+     *             @OA\Property(property="password", type="string", example="motP@sst**"),
+     *             @OA\Property(property="password_confirmation", type="string", example="motP@sst**")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="Mot de passe modifié",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="user_id", type="integer", example=1)
+     *         )
+     *     ),
+     * )
+    */
+    public function resetUserPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => ['required','confirmed', Password::defaults()],
+            'code' => 'required|numeric|digits:7',
+        ]);
+
+        $utilisateur = Utilisateur::where('email', $request->email)->first();
+        if (!$utilisateur) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Mail invalide. Vérifiez et reessayez à nouveau !',
+            ], 401);
+        }
+        try {
+            $utilisateur->password = Hash::make($request->password);
+            $utilisateur->save();
+            return response()->json([
+                'success' => true,
+                'message' => 'Le mot de passe a bien été réinitialisé',
+                'data' => $utilisateur,
+            ], 200);
+        } catch( Exception $e) {
+            return response()->json([
+                'success' => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }    
 }

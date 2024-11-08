@@ -81,6 +81,10 @@ Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:api')
 Route::post('register', [AuthController::class, 'register']);
 
 
+Route::post('auth/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('auth/forgot-password/verify', [AuthController::class, 'verifyResetCode']);
+Route::post('auth/reset-password', [AuthController::class, 'resetUserPassword']);
+
 // Route pour l'inscription
 Route::post('/register', [UtilisateurController::class, 'store'])->name('utilisateur.store')->middleware('utilisateur.validation');
 
