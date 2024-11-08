@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('email');
             $table->string('code');
-            $table->timestamp('created_at')->nullable();
+            $table->timestamps();
         });
     }
 
