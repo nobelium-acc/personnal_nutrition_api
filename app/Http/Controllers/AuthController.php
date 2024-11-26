@@ -55,6 +55,8 @@ class AuthController extends Controller
             ], 401);
         }
 
+        $utilisateur->last_login_date = now();
+        $utilisateur->save();
         $token = $utilisateur->createToken('API Token')->plainTextToken;
 
         return response()->json([

@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use Throwable;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -30,22 +31,23 @@ class Handler extends ExceptionHandler
     }
 
     public function render($request, Throwable $exception)
-{
-    // Check if the request expects JSON (API request) and if the exception is a 404 error
-    // if ($exception instanceof NotFoundHttpException && $request->expectsJson()) {
-    //     return response()->json([
-    //         'status' => 404,
-    //         "success" => false,
-    //         'message' => 'Route not found',
-    //     ], 404);
-    // }
-    
-    if ($request->expectsJson()) {
-        return response()->json([
-            'error' => $exception->getMessage()
-        ], 500);
-    }
+    {
+        // Check if the request expects JSON (API request) and if the exception is a 404 error
+        if ($exception instanceof NotFoundHttpException && $request->expectsJson()) {
+            return response()->json([
+                'status' => 404,
+                "success" => false,
+                'message' => 'Route not found',
+            ], 404);
+        }
+        
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => 500,
+                'error' => $exception->getMessage()
+            ], 500);
+        }
 
-    return parent::render($request, $exception);
-}
+        return parent::render($request, $exception);
+    }
 }

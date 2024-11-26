@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UtilisateurController;
@@ -32,6 +33,10 @@ use App\Http\Middleware\AdminMiddleware;
 // });
 Route::middleware(['auth:sanctum'])->group(function() {
     Route::post('/user_infos/maladie-chronique', [MaladieChroniqueController::class, 'store']);
+    Route::middleware('is_admin')->group(function() {
+        Route::get('admin/users/get-list', [AdminController::class, 'get_users_list']);
+        Route::post('admin/users/delete/{identifier}', [AdminController::class, 'delete_user']);
+    });
 });
 Route::middleware('checkadmin')->group(function () {
     Route::delete('/utilisateurs/{id}', [UtilisateurController::class, 'destroy']);
@@ -93,3 +98,7 @@ Route::post('/register', [UtilisateurController::class, 'store'])->name('utilisa
 
 // Route::post('login', [AuthController::class, 'login']);
 // Route::post('register', [AuthController::class, 'register']);
+
+// Admin routes
+
+

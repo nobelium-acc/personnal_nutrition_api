@@ -28,6 +28,7 @@ class CreateUtilisateursTable extends Migration
             $table->float('tour_du_cou');
             $table->string('niveau_d_activite_physique');
             $table->foreignId('maladie_chronique_id')->nullable()->constrained()->onDelete('cascade');
+            $table->dateTime('last_login_date')->nullable();
             $table->timestamps();
         });
     }

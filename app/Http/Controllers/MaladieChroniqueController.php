@@ -52,12 +52,16 @@ class MaladieChroniqueController extends Controller
         }
 
         $request->validate([
-            'type_maladie_chronique' => 'required|string|in:Obésité modérée,Obésité sévère,Obésité morbide',
+            'type_maladie_chronique' => 'required|string|in:obésité modérée,obésité sévère,obésité morbide',
         ]);
 
-        $maladieChronique = MaladieChronique::firstOrCreate([
-            'type' => $request->input('type_maladie_chronique'),
-        ]);
+        $maladieChronique = MaladieChronique::where('type', $request->type_maladie_chronique)->first();
+        if(!$maladieChronique) {
+            return response()->json([
+                'success' => false,
+                'message' => "Cette maladie n'est pas prise en compte pas le systeme",
+            ], 500);
+        }
 
         $utilisateur->maladie_chronique_id = $maladieChronique->id;
         $utilisateur->save();

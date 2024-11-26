@@ -84,6 +84,7 @@ class Kernel extends HttpKernel
         'update.personal.info' => \App\Http\Middleware\UpdatePersonalInfo::class,
         'user.responses' => \App\Http\Middleware\RetrieveUserResponses::class,
         'validate.reponse' => \App\Http\Middleware\ValidateReponseType::class,
+        'is_admin' => \App\Http\Middleware\IsAdminMiddleware::class
         
 
         
