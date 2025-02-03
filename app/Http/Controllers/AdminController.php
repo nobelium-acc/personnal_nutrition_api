@@ -30,7 +30,7 @@ class AdminController extends Controller
     public function get_users_list(Request $request)
     {
 
-        $users = Utilisateur::where('role', '#', UserRoleEnum::Admin);
+        $users = Utilisateur::where('role', '!=', UserRoleEnum::Admin)->get();
 
         return response()->json([
             'success' => true,
