@@ -33,6 +33,9 @@ use App\Http\Middleware\AdminMiddleware;
 // });
 Route::middleware(['auth:sanctum'])->group(function() {
     Route::post('/user_infos/maladie-chronique', [MaladieChroniqueController::class, 'store']);
+    Route::get('/user-infos/get-user-questions', [QuestionController::class, 'index']);
+    Route::get('/user-infos/get-user-answers', [QuestionController::class, 'list_answers']);
+    Route::post('/user-infos/set-user-answer', [QuestionController::class, 'store']);
     Route::middleware('is_admin')->group(function() {
         Route::get('admin/users/get-list', [AdminController::class, 'get_users_list']);
         Route::post('admin/users/delete/{identifier}', [AdminController::class, 'delete_user']);

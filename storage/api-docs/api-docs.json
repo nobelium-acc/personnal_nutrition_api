@@ -471,6 +471,145 @@
                     }
                 ]
             }
+        },
+        "/api/user-infos/get-user-questions": {
+            "get": {
+                "tags": [
+                    "User Infos"
+                ],
+                "summary": "Récupérer la liste des questions",
+                "description": "Liste des questions",
+                "operationId": "4250ccad9aa59144a3941f93c3638993",
+                "responses": {
+                    "200": {
+                        "description": "User infos saved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "User registered successfully"
+                                        },
+                                        "user_id": {
+                                            "type": "integer",
+                                            "example": 1
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        },
+        "/api/user-infos/set-user-answer": {
+            "post": {
+                "tags": [
+                    "User Infos"
+                ],
+                "summary": "Ajouter une réponse de l'utilisateur",
+                "operationId": "50087d91140f825e21776a45caabb27a",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "question_id",
+                                    "answer",
+                                    "description"
+                                ],
+                                "properties": {
+                                    "question_id": {
+                                        "type": "string",
+                                        "example": "1"
+                                    },
+                                    "answer_id": {
+                                        "type": "string",
+                                        "example": "2"
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "example": "Description de la réponse de l'utilisateur"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "User infos saved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "User registered successfully"
+                                        },
+                                        "user_id": {
+                                            "type": "integer",
+                                            "example": 1
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        },
+        "/api/user-infos/get-user-answers": {
+            "get": {
+                "tags": [
+                    "User Infos"
+                ],
+                "summary": "Récupérer la liste des réponses",
+                "description": "Liste des questions",
+                "operationId": "364402d07f483665fc54cd321e48634b",
+                "responses": {
+                    "200": {
+                        "description": "User infos saved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "User registered successfully"
+                                        },
+                                        "user_id": {
+                                            "type": "integer",
+                                            "example": 1
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
         }
     },
     "components": {

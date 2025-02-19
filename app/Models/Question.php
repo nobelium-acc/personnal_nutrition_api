@@ -11,7 +11,7 @@ class Question extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['texte_question'];
+    protected $guarded = [];
     
     /**
      * Relation avec Utilisateur.

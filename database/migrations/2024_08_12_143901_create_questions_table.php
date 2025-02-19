@@ -13,7 +13,8 @@ class CreateQuestionsTable extends Migration
         Schema::create('questions', function (Blueprint $table) {
             $table->id();
             $table->string('texte_question');
-             $table->foreignId('maladie_chronique_id')->constrained()->onDelete('cascade');
+            $table->foreignId('maladie_chronique_id')->constrained()->onDelete('cascade');
+            $table->boolean('has_possible_answers')->default(false);
             $table->timestamps();
         });
     }

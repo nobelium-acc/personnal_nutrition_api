@@ -12,5 +12,4 @@ enum TypeMaladieChronique : string
     case OBESITE_MORBIDE = 'obésité morbide';
 
 
-
 }

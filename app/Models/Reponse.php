@@ -11,7 +11,7 @@ class Reponse extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['reponse' ];
+    protected $guarded = [];
 
     public function question()
     {

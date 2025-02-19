@@ -18,7 +18,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             MaladieChroniqueSeeder::class,
             // AdministrateurSeeder::class,
-            // QuestionsSeeder::class,
+            QuestionsSeeder::class,
         ]);
         
         DB::table('utilisateurs')->insert([

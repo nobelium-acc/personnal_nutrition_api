@@ -12,9 +12,10 @@ class CreateReponsesTable extends Migration
     {
         Schema::create('reponses', function (Blueprint $table) {
             $table->id();
-            $table->text('reponse');
             $table->foreignId('question_id')->constrained()->onDelete('cascade');
+            $table->foreignId('question_possible_answer_id')->nullable();
             $table->foreignId('utilisateur_id')->constrained()->onDelete('cascade');
+            $table->text('description')->nullable();
             $table->timestamps();
         });
     }
