@@ -18,30 +18,14 @@ class QuestionsSeeder extends Seeder
             // Antécédents médicaux
             [
                 'maladie_chronique_id' => 1, 
-                'texte_question' => "Avez-vous des antécédents de diabète, d'hypertension, ou de maladies cardiovasculaires ? (Oui/Non)",
+                'texte_question' => "Avez-vous des antécédents de diabète, d'hypertension, ou de maladies cardiovasculaires ? Si Oui, lesquelles ?",
                 'possible_answers' => $yes_or_no_questions,
             ],
             [
                 'maladie_chronique_id' => 1,
-                'texte_question' => 'Prenez-vous des médicaments actuellement ? Si oui, lesquels ?',
+                'texte_question' => 'Prenez-vous des médicaments actuellement qui sont liés à vos antécédents précédents ? Si oui, lesquels ?',
                 'possible_answers' => $yes_or_no_questions,
             ],
-            [
-                'maladie_chronique_id' => 1,
-                'texte_question' => "Combien d'heures de sommeil avez-vous par nuit ? ",
-                'possible_answers' => [
-                    'Moins de 6',
-                    '6-7',
-                    '8-9',
-                    'Plus de 9'
-                ],
-            ],
-            [
-                'maladie_chronique_id' => 1, 
-                'texte_question' => "Avez-vous récemment perdu ou pris du poids ? Si oui, combien et en combien de temps ? Quelle en est la cause selon vous ?",
-                'possible_answers' => $yes_or_no_questions,
-            ],
-
             // Habitudes alimentaires
             [
                 'maladie_chronique_id' => 1, 
@@ -53,7 +37,6 @@ class QuestionsSeeder extends Seeder
                 'possible_answers' => [
                     '1-2',
                     '3-4',
-                    '5',
                     '5 ou plus'
                 ]
             ],
@@ -73,12 +56,34 @@ class QuestionsSeeder extends Seeder
                 ]
             ],
 
+            // Comportement et bien etre
+            [
+                'maladie_chronique_id' => 1,
+                'texte_question' => "Combien d'heures de sommeil avez-vous par nuit ? ",
+                'possible_answers' => [
+                    'Moins de 6',
+                    '6-7',
+                    '8-9',
+                    'Plus de 9'
+                ],
+            ],
+            [
+                'maladie_chronique_id' => 1,
+                'texte_question' => "Avez-vous l’apnée du sommeil ? ",
+                'possible_answers' => $yes_or_no_questions
+            ],
+            [
+                'maladie_chronique_id' => 1, 
+                'texte_question' => "Avez-vous récemment fait un régime de perte du poids ? Si oui, combien de poids avez-vous perdu ?",
+                'possible_answers' => $yes_or_no_questions,
+            ],
+
             // Activité physique
             [
                 'maladie_chronique_id' => 1,
-                'texte_question' => "Combien de jours par semaine pratiquez-vous une activité physique d\'au moins 30 minutes ?",
+                'texte_question' => "Combien de jours par semaine pratiquez-vous une activité physique ?",
                 'possible_answers' => [
-                    '0',
+                    'Aucun',
                     '1',
                     '3-4',
                     '5-7'
@@ -86,11 +91,17 @@ class QuestionsSeeder extends Seeder
             ],
             [
                 'maladie_chronique_id' => 1,
-                'texte_question' => 'Combien de temps passez-vous en position assise chaque jour ?'
+                'texte_question' => 'Combien de temps passez-vous en position assise chaque jour ?',
+                'possible_answers' => [
+                    'Moins de 4h',
+                    '4h-6h',
+                    '6h-8h',
+                    'Plus de 8h'
+                ]
             ],
             [
                 'maladie_chronique_id' => 1,
-                'texte_question' => 'Quelles activités physiques appréciez-vous ? (marche, natation, etc.)'
+                'texte_question' => 'Quelles activités physiques appréciez-vous ? (marche, yoga, natation, etc.)'
             ],
             [
                 'maladie_chronique_id' => 1, 
@@ -114,10 +125,10 @@ class QuestionsSeeder extends Seeder
                 'texte_question' => "Avez-vous déjà suivi un régime alimentaire particulier ? Si oui, lequel, et a-t-il été efficace pour vous ?",
                 'possible_answers' => $yes_or_no_questions,
             ],
-            [
-                'maladie_chronique_id' => 1,
-                'texte_question' => "Suivez-vous un régime alimentaire spécifique (végétarien, sans gluten, etc.) ?"
-            ],
+            // [
+            //     'maladie_chronique_id' => 1,
+            //     'texte_question' => "Suivez-vous un régime alimentaire spécifique (végétarien, sans gluten, etc.) ?"
+            // ],
 
             // Objectifs de santé
             [
@@ -141,32 +152,38 @@ class QuestionsSeeder extends Seeder
                 'texte_question' => 'Avez-vous été diagnostiqué avec des problèmes de santé liés à l\'obésité, comme le diabète de type 2, l\'hypertension, ou l\'hypercholestérolémie ?',
                 'possible_answers' => $yes_or_no_questions
             ],
-            [
-                'maladie_chronique_id' => 2,
-                'texte_question' => "Avez-vous d'autres conditions médicales ?",
-                'possible_answers' => $yes_or_no_questions
-            ],
+            // [
+            //     'maladie_chronique_id' => 2,
+            //     'texte_question' => "Avez-vous d'autres conditions médicales ?",
+            //     'possible_answers' => $yes_or_no_questions
+            // ],
             [
                 'maladie_chronique_id' => 2,
                 'texte_question' => 'Avez-vous subi des opérations chirurgicales liées à votre poids, comme une chirurgie bariatrique ?',
                 'possible_answers' => $yes_or_no_questions
             ],
-            [
-                'maladie_chronique_id' => 2, 
-                'texte_question' => 'Avez-vous des douleurs articulaires ou des limitations de mobilité ?',
-                'possible_answers' => $yes_or_no_questions,
-            ],
-            [
-                'maladie_chronique_id' => 2, 
-                'texte_question' => 'Avez-vous récemment perdu ou pris du poids ? Si oui, combien et en combien de temps ? Pourquoi ?',
-                'possible_answers' => $yes_or_no_questions,
-            ],
+            // [
+            //     'maladie_chronique_id' => 2, 
+            //     'texte_question' => 'Avez-vous des douleurs articulaires ou des limitations de mobilité ?',
+            //     'possible_answers' => $yes_or_no_questions,
+            // ],
+            // [
+            //     'maladie_chronique_id' => 2, 
+            //     'texte_question' => 'Avez-vous récemment perdu ou pris du poids ? Si oui, combien et en combien de temps ? Pourquoi ?',
+            //     'possible_answers' => $yes_or_no_questions,
+            // ],
 
             // Habitudes alimentaires
             [
                 'maladie_chronique_id' => 2,
                 'texte_question' => 'Avez-vous des restrictions alimentaires ? (allergies, intolérances, préférences culturelles ou religieuses)',
-                'possible_answers' => $yes_or_no_questions,
+                'possible_answers' => [
+                    'Allergies',
+                    'Intolérences',
+                    'Préférences culturelles',
+                    'Réligieuses',
+                    'Autres'
+                ],
             ],
             [
                 'maladie_chronique_id' => 2,
@@ -175,7 +192,7 @@ class QuestionsSeeder extends Seeder
             ],
             [
                 'maladie_chronique_id' => 2, 
-                'texte_question' => 'Suivez-vous déjà un plan nutritionnel ou avez-vous consulté un diététicien auparavant ?',
+                'texte_question' => 'Suivez-vous déjà un plan nutritionnel ou avez-vous consulté un diététicien auparavant ? Si oui, donnez nous les details en quelques lignes',
                 'possible_answers' => $yes_or_no_questions,
             ],
             [
@@ -184,25 +201,78 @@ class QuestionsSeeder extends Seeder
                 'possible_answers' => $yes_or_no_questions,
             ],
 
+            // Comportements et bien etre
+            [
+                'maladie_chronique_id' => 2,
+                'texte_question' => 'Combien d\'heures de sommeil avez-vous par nuit ?',
+                'possible_answers' => [
+                    'Moins de 6h',
+                    '6h-7h',
+                    '8h-9h',
+                    'Plus de 9h'
+                ],
+            ],
+            [
+                'maladie_chronique_id' => 2,
+                'texte_question' => "Avez-vous l'apnée du sommeil ? ",
+                'possible_answers' => $yes_or_no_questions
+            ],
+            [
+                'maladie_chronique_id' => 2,
+                'texte_question' => "Avez-vous des douleurs articulaires ou des limitations de mobilité ? Si oui, A quelle fréquence ?",
+                'possible_answers' => $yes_or_no_questions
+            ],
+            [
+                'maladie_chronique_id' => 2,
+                'texte_question' => "Avez-vous récemment fait un régime de perte du poids ? Si oui, combien de poids avez-vous perdu ?",
+                'possible_answers' => $yes_or_no_questions
+            ],
+            
+
+
             // Activité physique et mobilité
             [
                 'maladie_chronique_id' => 2, 
-                'texte_question' => 'Quelle est votre capacité à faire de l\'exercice physique ? Avez-vous des difficultés à marcher ou à monter des escaliers ?',
-                'possible_answers' => $yes_or_no_questions,
-            ],
-            [
-                'maladie_chronique_id' => 2,
-                'texte_question' => 'Pratiquez-vous des activités de loisirs qui incluent de l\'activité physique, comme la marche, la natation, ou le jardinage ?',
-                'possible_answers' => $yes_or_no_questions,
+                'texte_question' => 'Combien de jours par semaine pratiquez-vous une activité physique ?',
+                'possible_answers' => [
+                    'Aucun', 
+                    '1 à 3 jour',
+                    '4 à 6 Jours',
+                    '7 jours'
+                ]
             ],
             [
                 'maladie_chronique_id' => 2, 
-                'texte_question' => 'Avez-vous envisagé de commencer un programme d\'exercices encadré par un professionnel ?',
-                'possible_answers' => $yes_or_no_questions,
+                'texte_question' => 'Combien de temps passez-vous en position assise chaque jour ?',
+                'possible_answers' => [
+                    'Moins de 4h', 
+                    '4h à 6h',
+                    '46 à 8h',
+                    'Plus de 8h'
+                ]
             ],
+            [
+                'maladie_chronique_id' => 2, 
+                'texte_question' => 'Quelles activités physiques appréciez-vous ? (marche, yoga ou autre) ?',
+            ],
+            // [
+            //     'maladie_chronique_id' => 2,
+            //     'texte_question' => 'Pratiquez-vous des activités de loisirs qui incluent de l\'activité physique, comme la marche, la natation, ou le jardinage ?',
+            //     'possible_answers' => $yes_or_no_questions,
+            // ],
+            // [
+            //     'maladie_chronique_id' => 2, 
+            //     'texte_question' => 'Avez-vous envisagé de commencer un programme d\'exercices encadré par un professionnel ?',
+            //     'possible_answers' => $yes_or_no_questions,
+            // ],
             [
                 'maladie_chronique_id' => 2,
                 'texte_question' => 'Quelle est votre fréquence cardiaque au repos (si vous la connaissez) ?'
+            ],
+            [
+                'maladie_chronique_id' => 2,
+                'texte_question' => "Avez-vous envisagé de commencer un programme d'exercices encadré par un professionnel de sport",
+                'possible_answers' => $yes_or_no_questions
             ],
 
             // Comportements alimentaires et émotions
@@ -212,7 +282,17 @@ class QuestionsSeeder extends Seeder
             ],
             [
                 'maladie_chronique_id' => 2,
-                'texte_question' => 'Avez-vous des habitudes alimentaires liées à des émotions, comme le stress ou la dépression ?',
+                'texte_question' => "Mangez vous souvent par stress ou ennui?",
+                'possible_answers' => $yes_or_no_questions,
+            ],
+            [
+                'maladie_chronique_id' => 2,
+                'texte_question' => "Avez-vous tendance à finir votre assiette même si vous n’avez plus faim ?",
+                'possible_answers' => $yes_or_no_questions,
+            ],
+            [
+                'maladie_chronique_id' => 2,
+                'texte_question' => "Avez-vous des habitudes alimentaires liées à des émotions, comme le stress ou la dépression ?",
                 'possible_answers' => $yes_or_no_questions,
             ],
             [
@@ -259,14 +339,18 @@ class QuestionsSeeder extends Seeder
                 'texte_question' => 'Avez-vous des difficultés à effectuer des activités quotidiennes de base en raison de votre poids ?',
                 'possible_answers' => $yes_or_no_questions,
             ],
+            // [
+            //     'maladie_chronique_id' => 3,
+            //     'texte_question' => 'Avez-vous des antécédents de problèmes de santé mentale ?',
+            //     'possible_answers' => $yes_or_no_questions,
+            // ],
             [
                 'maladie_chronique_id' => 3,
-                'texte_question' => 'Avez-vous des antécédents de problèmes de santé mentale ?',
+                'texte_question' => 'Avez-vous récemment perdu ou pris du poids ? Si oui, combien et en combien de temps ? Pourquoi ? ',
                 'possible_answers' => $yes_or_no_questions,
             ],
 
             // Habitudes alimentaires
-        
             [
                 'maladie_chronique_id' => 3,
                 'texte_question' => 'Avez-vous des épisodes de compulsions alimentaires ou de boulimie ?',
@@ -311,8 +395,7 @@ class QuestionsSeeder extends Seeder
             ],
             
             
-            // Comportements alimentaires
-            
+            // Psychologique Comportements alimentaires
             [
                 'maladie_chronique_id' => 3,
                 'texte_question' => 'Avez-vous un suivi psychologique ou psychiatrique en lien avec votre poids ou votre alimentation ?',
