@@ -137,7 +137,12 @@ class QuestionsSeeder extends Seeder
             ],
             [
                 'maladie_chronique_id' => 1,
-                'texte_question' => 'Combien de kg souhaitez-vous perdre ?'
+                'texte_question' => 'Combien de kg souhaitez-vous perdre ?',
+                'possible_answers' => [
+                    'Moins de 5 kg',
+                    '5 - 10 kg',
+                    'Plus de 10 kg'
+                ]
             ],
             [
                 'maladie_chronique_id' => 1,
@@ -305,6 +310,13 @@ class QuestionsSeeder extends Seeder
             [
                 'maladie_chronique_id' => 2, 
                 'texte_question' => 'Quels sont vos objectifs à court et à long terme pour votre poids et votre santé ?',
+                'posssible_answers' => [
+                    'Perdre moins 5 kg à court terme et maintenir un poids sain à long terme',
+                    'Perdre entre 5 et 10 kg à court terme et maintenir un poids sain à long terme',
+                    'Perdre plus de 10 kg à court terme et maintenir un poids sain à long terme',
+                    'Améliorer ma santé générale et augmenter mon énergie',
+                    'Atteindre un poids spécifique et maintenir un mode de vie sain',
+                ]
             ],
             [
                 'maladie_chronique_id' => 2,
@@ -422,7 +434,13 @@ class QuestionsSeeder extends Seeder
             ],
             [
                 'maladie_chronique_id' => 3,
-                'texte_question' => 'Quels sont vos objectifs de santé immédiats et à long terme ?'
+                'texte_question' => 'Quels sont vos objectifs de santé immédiats et à long terme ?',
+                'possible_answers' => [
+                    "Mon objectif immédiat est de perdre 5 kg et à long terme amélqueiorer ma condition physique",
+                    "Mon objectif immédiat est de perdre entre 5 et 10 kg et à long terme améliorer ma condition physique",
+                    "Mon objectif immédiat est de perdre plus de 10 kg et à long terme améliorer ma condition physique",
+                    "Maintenir un poids stable dans l'immédiat et vivre de manière plus saine en évitant les comorbidités à longue terme."
+                ]
             ],
             [
                 'maladie_chronique_id' => 3,
