@@ -310,7 +310,7 @@ class QuestionsSeeder extends Seeder
             [
                 'maladie_chronique_id' => 2, 
                 'texte_question' => 'Quels sont vos objectifs à court et à long terme pour votre poids et votre santé ?',
-                'posssible_answers' => [
+                'possible_answers' => [
                     'Perdre moins 5 kg à court terme et maintenir un poids sain à long terme',
                     'Perdre entre 5 et 10 kg à court terme et maintenir un poids sain à long terme',
                     'Perdre plus de 10 kg à court terme et maintenir un poids sain à long terme',
