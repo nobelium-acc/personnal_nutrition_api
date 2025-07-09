@@ -18,7 +18,7 @@ class QuestionsSeeder extends Seeder
             // Antécédents médicaux
             [
                 'maladie_chronique_id' => 1, 
-                'texte_question' => "Avez-vous des antécédents de diabète, d'hypertension, ou de maladies cardiovasculaires ? Si Oui, lesquelles ?",
+                'texte_question' => "Avez-vous des antécédents de diabète de type 1, de diabète de type 2, d'hypertension,  de maladies cardiovasculaires et autres ?",
                 'possible_answers' => $yes_or_no_questions,
             ],
             [
@@ -142,6 +142,21 @@ class QuestionsSeeder extends Seeder
                     'Moins de 5 kg',
                     '5 - 10 kg',
                     'Plus de 10 kg'
+                ]
+            ],
+            [
+                'maladie_chronique_id' => 1,
+                'texte_question' => "Quel niveau de changement etes vous prêts à suivre pour atteindre votre objectif ? ",
+                'possible_answers' => [
+                    "Moins de 5 kg : Léger (300kcal)",
+                    "Moins de 5 kg : Moyen (400kcal)",
+                    "Moins de 5 kg : Serein (500kcal)",
+                    "Entre 5 et 10 kg : Léger (500kcal)",
+                    "Entre 5 et 10 kg : Moyen (600kcal)",
+                    "Entre 5 et 10 kg : Serein (700kcal)",
+                    "Plus de 10 kg : Leger (500kg)",
+                    "Plus de 10 kg : Moyen (700kg)",
+                    "Plus de 10 kg : Serein (1000kg)",
                 ]
             ],
             [
@@ -327,6 +342,21 @@ class QuestionsSeeder extends Seeder
                 'maladie_chronique_id' => 2,
                 'texte_question' => 'Quelle est votre motivation principale pour perdre du poids ?'
             ],
+            [
+                'maladie_chronique_id' => 2,
+                'texte_question' => "Quel niveau de changement etes vous prêts à suivre pour atteindre votre objectif ? ",
+                'possible_answers' => [
+                    "Moins de 5 kg : Léger (300kcal)",
+                    "Moins de 5 kg : Moyen (400kcal)",
+                    "Moins de 5 kg : Serein (500kcal)",
+                    "Entre 5 et 10 kg : Léger (500kcal)",
+                    "Entre 5 et 10 kg : Moyen (600kcal)",
+                    "Entre 5 et 10 kg : Serein (700kcal)",
+                    "Plus de 10 kg : Leger (500kg)",
+                    "Plus de 10 kg : Moyen (700kg)",
+                    "Plus de 10 kg : Serein (1000kg)",
+                ]
+            ],
 
             // Questions pour l'Obésité de Classe 3 (IMC de 40 ou plus)
 
@@ -445,7 +475,22 @@ class QuestionsSeeder extends Seeder
             [
                 'maladie_chronique_id' => 3,
                 'texte_question' => 'Quels aspects de votre vie vous motivent le plus pour changer vos habitudes alimentaires et physiques ?'
-            ]      
+            ],
+            [
+                'maladie_chronique_id' => 3,
+                'texte_question' => "Quel niveau de changement etes vous prêts à suivre pour atteindre votre objectif ? ",
+                'possible_answers' => [
+                    "Moins de 5 kg : Léger (300kcal)",
+                    "Moins de 5 kg : Moyen (400kcal)",
+                    "Moins de 5 kg : Serein (500kcal)",
+                    "Entre 5 et 10 kg : Léger (500kcal)",
+                    "Entre 5 et 10 kg : Moyen (600kcal)",
+                    "Entre 5 et 10 kg : Serein (700kcal)",
+                    "Plus de 10 kg : Leger (500kg)",
+                    "Plus de 10 kg : Moyen (700kg)",
+                    "Plus de 10 kg : Serein (1000kg)",
+                ]
+            ],     
         ];
 
         foreach($questions as $question) {
