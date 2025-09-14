@@ -26,6 +26,18 @@ class QuestionsSeeder extends Seeder
                 'texte_question' => 'Prenez-vous des médicaments actuellement qui sont liés à vos antécédents précédents ? Si oui, lesquels ?',
                 'possible_answers' => $yes_or_no_questions,
             ],
+            [
+                'maladie_chronique_id' => 1,
+                'texte_question' => "Prenez-vous actuellement l'un des types de médicaments suivants ?",
+                'possible_answers' => [
+                    "Médicaments pour baisser la glycémie (ex : metformine, glimepiride…)",
+                    "Insuline",
+                    "Médicaments pour perdre du poids (ex : orlistat, liraglutide…)",
+                    "Médicaments pour la tension artérielle (ex : IEC, ARA2, bêta-bloquants…)",
+                    "Médicaments pour le cholestérol (ex : statines)",
+                    "Aucun de ces médicaments",
+                ]
+            ],
             // Habitudes alimentaires
             [
                 'maladie_chronique_id' => 1, 
@@ -75,7 +87,11 @@ class QuestionsSeeder extends Seeder
             [
                 'maladie_chronique_id' => 1, 
                 'texte_question' => "Avez-vous récemment fait un régime de perte du poids ? Si oui, combien de poids avez-vous perdu ?",
-                'possible_answers' => $yes_or_no_questions,
+                'possible_answers' => [
+                    'Moins de 5 kg',
+                    '5 - 10 kg',
+                    'Plus de 10 kg',
+                ],
             ],
 
             // Activité physique
