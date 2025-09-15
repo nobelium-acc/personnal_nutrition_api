@@ -18,12 +18,12 @@ class QuestionsSeeder extends Seeder
             // Antécédents médicaux
             [
                 'maladie_chronique_id' => 1, 
-                'texte_question' => "Avez-vous des antécédents de diabète de type 1, de diabète de type 2, d'hypertension,  de maladies cardiovasculaires et autres ?",
+                'texte_question' => "Avez-vous des antécédents de diabète de type 2, d'hypertension,  de maladies cardiovasculaires et autres ?",
                 'possible_answers' => $yes_or_no_questions,
             ],
             [
                 'maladie_chronique_id' => 1,
-                'texte_question' => 'Prenez-vous des médicaments actuellement qui sont liés à vos antécédents précédents ? Si oui, lesquels ?',
+                'texte_question' => 'Prenez-vous des médicaments actuellement qui sont liés à vos antécédents précédents ? Si oui, lesquels et pourquoi ?',
                 'possible_answers' => $yes_or_no_questions,
             ],
             [
