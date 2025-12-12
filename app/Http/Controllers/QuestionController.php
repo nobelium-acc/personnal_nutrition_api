@@ -46,10 +46,8 @@ class QuestionController extends Controller
                 'message' => 'Vous devez ajouter une maladie chronique',
             ], 500);
         }
-        $questions = Question::where('maladie_chronique_id', $utilisateur->maladie_chronique_id)->get();
-        foreach ($questions as $question) {
-            $question->possible_answers = QuestionPossibleAnswer::where('question_id', $question->id)->get();
-        }
+        $questions = Question::with('possibleAnswers')->where('maladie_chronique_id', $utilisateur->maladie_chronique_id)->get();
+
         return response()->json([
             'success' => true,
             'message' => 'Liste des questions récupérée avec succès',

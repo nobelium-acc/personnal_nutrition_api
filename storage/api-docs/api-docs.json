@@ -610,9 +610,375 @@
                     }
                 ]
             }
+        },
+        "/api/reponses": {
+            "get": {
+                "tags": [
+                    "Réponses"
+                ],
+                "summary": "Lister les réponses de l'utilisateur connecté",
+                "description": "Récupère les réponses de l'utilisateur actuellement authentifié.",
+                "operationId": "275a9490e4129b46dca8f5145289ab86",
+                "responses": {
+                    "200": {
+                        "description": "Liste des réponses récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Liste des réponses récupérée avec succès"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Reponse"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Réponses"
+                ],
+                "summary": "Enregistrer de nouvelles réponses",
+                "description": "Enregistre une ou plusieurs réponses pour l'utilisateur connecté.",
+                "operationId": "323a5ab23d1b5bd4225c429e39f851b0",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "reponses"
+                                ],
+                                "properties": {
+                                    "reponses": {
+                                        "description": "Liste des réponses à enregistrer",
+                                        "type": "array",
+                                        "items": {
+                                            "required": [
+                                                "question_id"
+                                            ],
+                                            "properties": {
+                                                "question_id": {
+                                                    "description": "ID de la question",
+                                                    "type": "integer",
+                                                    "example": 5
+                                                },
+                                                "reponse": {
+                                                    "description": "Obligatoire si la question n'a pas de choix possibles",
+                                                    "type": "string",
+                                                    "example": "Ma réponse textuelle",
+                                                    "nullable": true
+                                                },
+                                                "question_possible_answer_id": {
+                                                    "description": "Obligatoire si la question possède des choix possibles",
+                                                    "type": "integer",
+                                                    "example": 10,
+                                                    "nullable": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "example": {
+                                "reponses": [
+                                    {
+                                        "question_id": 5,
+                                        "reponse": "Ma réponse textuelle pour une question sans choix"
+                                    },
+                                    {
+                                        "question_id": 10,
+                                        "question_possible_answer_id": 3
+                                    },
+                                    {
+                                        "question_id": 12,
+                                        "reponse": "Une autre réponse texte"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Réponses enregistrées avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Réponses enregistrées avec succès"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Erreur de validation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Erreur de validation des réponses"
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié"
+                    }
+                }
+            }
+        },
+        "/api/reponses/{id}": {
+            "get": {
+                "tags": [
+                    "Réponses"
+                ],
+                "summary": "Afficher une réponse spécifique",
+                "operationId": "6fb8f0c5e439fd182cac65ae1fd40dbe",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la réponse",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Réponse récupérée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Réponse récupérée avec succès"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Reponse"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Réponse non trouvée"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Réponses"
+                ],
+                "summary": "Mettre à jour une réponse",
+                "description": "Met à jour une réponse en respectant la logique de validation (texte vs choix).",
+                "operationId": "36f7aa7f1bcdb6daca556b4d1e5152dc",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la réponse",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "question_id": {
+                                        "description": "Optionnel. ID de la question pour réassocier.",
+                                        "type": "integer",
+                                        "example": 5
+                                    },
+                                    "reponse": {
+                                        "description": "Nouveau texte (si question ouverte)",
+                                        "type": "string",
+                                        "example": "Réponse modifiée"
+                                    },
+                                    "question_possible_answer_id": {
+                                        "description": "Nouvel ID de choix (si question à choix)",
+                                        "type": "integer",
+                                        "example": 12
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Réponse mise à jour avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Réponse mise à jour avec succès"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Reponse"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Erreur de validation"
+                    },
+                    "404": {
+                        "description": "Réponse non trouvée"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Réponses"
+                ],
+                "summary": "Supprimer une réponse",
+                "operationId": "dcb30444c6c5a6acee00347714a8d52c",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la réponse",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Réponse supprimée avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Réponse supprimée avec succès"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Réponse non trouvée"
+                    }
+                }
+            }
         }
     },
     "components": {
+        "schemas": {
+            "Reponse": {
+                "title": "Réponse",
+                "description": "Schéma représentant une réponse d'utilisateur",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "question_id": {
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "utilisateur_id": {
+                        "type": "integer",
+                        "example": 8
+                    },
+                    "question_possible_answer_id": {
+                        "type": "integer",
+                        "example": 3,
+                        "nullable": true
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "Ma réponse textuelle",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2025-01-10T14:03:21Z"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2025-01-10T14:03:21Z"
+                    }
+                },
+                "type": "object"
+            }
+        },
         "securitySchemes": {
             "BearerToken": {
                 "type": "http",
@@ -621,5 +987,11 @@
                 "scheme": "bearer"
             }
         }
-    }
+    },
+    "tags": [
+        {
+            "name": "Réponses",
+            "description": "API Endpoints pour la gestion des réponses utilisateurs"
+        }
+    ]
 }

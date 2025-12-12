@@ -30,5 +30,10 @@ class Question extends Model
     {
         return $this->hasOne(Reponse::class);
     }
+
+    public function possibleAnswers()
+    {
+        return $this->hasMany(QuestionPossibleAnswer::class);
+    }
 }
 
