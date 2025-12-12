@@ -187,7 +187,7 @@
                                     },
                                     "sexe": {
                                         "type": "string",
-                                        "example": "Homme"
+                                        "example": "M"
                                     },
                                     "poids": {
                                         "type": "float",
@@ -468,6 +468,114 @@
                 "security": [
                     {
                         "BearerToken": []
+                    }
+                ]
+            }
+        },
+        "/api/nutrition/calculate": {
+            "post": {
+                "tags": [
+                    "Nutrition"
+                ],
+                "summary": "Calculer les indicateurs nutritionnels (IMC, RTH, IMG, BMR, TDEE)",
+                "description": "Effectue les calculs nutritionnels basés sur les données stockées de l'utilisateur (poids, taille, tours, etc.). Compare également le résultat avec le type d'obésité déclaré par l'utilisateur (via sa maladie chronique) et envoie un email en cas d'incohérence.",
+                "operationId": "b92efbf1b1e41f4712ff6a19983024fd",
+                "requestBody": {
+                    "description": "Exemple de corps de requête pour tester (user_id est optionnel si authentifié)",
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "user_id": {
+                                        "description": "Id de l'utilisateur si la requête est faite par un admin, sinon l'utilisateur authentifié est utilisé",
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Calculs réussis",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "user_id": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "imc": {
+                                            "type": "number",
+                                            "format": "float",
+                                            "example": 31.02
+                                        },
+                                        "rth": {
+                                            "type": "number",
+                                            "format": "float",
+                                            "example": 0.77
+                                        },
+                                        "img": {
+                                            "type": "number",
+                                            "format": "float",
+                                            "example": 28.5
+                                        },
+                                        "bmr": {
+                                            "type": "integer",
+                                            "example": 1850
+                                        },
+                                        "tdee": {
+                                            "type": "integer",
+                                            "example": 2500
+                                        },
+                                        "status": {
+                                            "description": "Statut calculé par l'algorithme",
+                                            "type": "string",
+                                            "example": "Obese"
+                                        },
+                                        "grade_imc": {
+                                            "description": "Grade selon l'IMC",
+                                            "type": "string",
+                                            "example": "Obésité modérée (Grade 1)"
+                                        },
+                                        "declared_type": {
+                                            "description": "Type déclaré dans Maladie Chronique",
+                                            "type": "string",
+                                            "example": "Obésité modérée"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "D’après vos mesures..."
+                                        },
+                                        "consistent": {
+                                            "description": "Indique si le type déclaré correspond au calcul",
+                                            "type": "boolean",
+                                            "example": true
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Données manquantes ou ID requis"
+                    },
+                    "404": {
+                        "description": "Utilisateur non trouvé"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
                     }
                 ]
             }

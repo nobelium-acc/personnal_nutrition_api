@@ -23,14 +23,7 @@ use App\Http\Middleware\AdminMiddleware;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
-/*Route::middleware(['cors'])->group(function () {
-    Route::get('/api/resource', 'ResourceController@index');
-});*/
 
-// Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-//     return $request->user();
-   
-// });
 Route::middleware(['auth:sanctum'])->group(function() {
     Route::post('/user_infos/maladie-chronique', [MaladieChroniqueController::class, 'store']);
     Route::get('/user-infos/get-user-questions', [QuestionController::class, 'index']);
@@ -47,6 +40,7 @@ Route::middleware('checkadmin')->group(function () {
 
 Route::get('/responses', [ReponseController::class, 'index'])->middleware('user.responses');
 Route::post('/responses', [ReponseController::class, 'store'])->middleware('validate.reponse');
+Route::post('/nutrition/calculate', [App\Http\Controllers\NutritionController::class, 'calculate']);
 
 Route::put('/user/{id}/update-maladie-chronique', [UtilisateurController::class, 'updateMaladieChronique']);
 
@@ -63,9 +57,7 @@ Route::post('auth/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('auth/forgot-password/verify', [AuthController::class, 'verifyResetCode']);
 Route::post('auth/reset-password', [AuthController::class, 'resetUserPassword']);
 
-// Route pour l'inscription
 Route::post('/register', [UtilisateurController::class, 'store'])->name('utilisateur.store')->middleware('utilisateur.validation');
 
-// Admin routes
 
 

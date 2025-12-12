@@ -80,7 +80,7 @@ class AuthController extends Controller
      *             @OA\Property(property="nom", type="string", example="HUGOSS"),
      *             @OA\Property(property="prenom", type="string", example="Henry"),
      *             @OA\Property(property="age", type="integer", example="12"),
-     *             @OA\Property(property="sexe", type="string", example="Homme"),
+     *             @OA\Property(property="sexe", type="string", example="M"),
      *             @OA\Property(property="poids", type="float", example="70"),
      *             @OA\Property(property="taille", type="float", example="171"),
      *             @OA\Property(property="tour_de_taille", type="float", example="34"),
