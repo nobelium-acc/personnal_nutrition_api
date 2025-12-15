@@ -9,6 +9,7 @@ use App\Http\Controllers\MaladieChroniqueController;
 use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\PlanNutritionnelController;
 use App\Http\Controllers\ReponseController;
+use App\Http\Controllers\NutritionController;
 use App\Http\Controllers\AuthController;
 
 use App\Http\Middleware\AdminMiddleware;
@@ -38,9 +39,12 @@ Route::middleware('checkadmin')->group(function () {
     Route::delete('/utilisateurs/{id}', [UtilisateurController::class, 'destroy']);
 });
 
-Route::get('/responses', [ReponseController::class, 'index'])->middleware('user.responses');
-Route::post('/responses', [ReponseController::class, 'store'])->middleware('validate.reponse');
-Route::post('/nutrition/calculate', [App\Http\Controllers\NutritionController::class, 'calculate']);
+Route::get('/reponses', [ReponseController::class, 'index'])->middleware('user.responses');
+Route::post('/reponses', [ReponseController::class, 'store'])->middleware('validate.reponse');
+Route::get('/reponses/{id}', [ReponseController::class, 'show']);
+Route::put('/reponses/{id}', [ReponseController::class, 'update']);
+Route::delete('/reponses/{id}', [ReponseController::class, 'destroy']);
+Route::post('/nutrition/calculate', [NutritionController::class, 'calculate']);
 
 Route::put('/user/{id}/update-maladie-chronique', [UtilisateurController::class, 'updateMaladieChronique']);
 
