@@ -169,6 +169,27 @@ class ReponseController extends Controller
         $errors = [];
         $validReponses = [];
 
+        // Check for missing mandatory questions
+        $user = auth()->user();
+        if ($user && $user->maladie_chronique_id) {
+            $mandatoryQuestionIds = Question::where('maladie_chronique_id', $user->maladie_chronique_id)
+                ->where('has_possible_answers', true)
+                ->pluck('id')
+                ->toArray();
+
+            $submittedQuestionIds = array_column($reponsesData, 'question_id');
+            $missingQuestionIds = array_diff($mandatoryQuestionIds, $submittedQuestionIds);
+
+            if (!empty($missingQuestionIds)) {
+                $missingQuestions = Question::whereIn('id', $missingQuestionIds)->pluck('texte_question');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Veuillez répondre à toutes les questions obligatoires.',
+                    'missing_questions' => $missingQuestions,
+                ], 400);
+            }
+        }
+
         foreach ($reponsesData as $index => $responseData) {
             if (!isset($responseData['question_id'])) {
                 $errors["reponses.{$index}.question_id"] = ["Le champ question_id est obligatoire pour l'élément $index."];
@@ -180,6 +201,12 @@ class ReponseController extends Controller
             if (!$question) {
                 $errors["reponses.{$index}.question_id"] = ["La question avec l'ID {$responseData['question_id']} n'existe pas."];
                 continue;
+            }
+
+            // Ensure question belongs to user's disease (security check)
+            if ($user && $user->maladie_chronique_id && $question->maladie_chronique_id != $user->maladie_chronique_id) {
+                 $errors["reponses.{$index}.question_id"] = ["La question '{$question->texte_question}' ne correspond pas à votre profil médical."];
+                 continue;
             }
 
             if ($question->has_possible_answers) {
