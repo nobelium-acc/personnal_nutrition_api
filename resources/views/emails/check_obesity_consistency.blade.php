@@ -42,8 +42,7 @@
     </table>
 
     <h3>⚠️ Problème rencontré :</h3>
-    <p>Lors de votre sélection dans l’application, vous avez indiqué souffrir d’une forme d’obésité différente de celle déduite par nos calculs. Cette incohérence nous empêche de générer un plan nutritionnel adapté et fiable à votre profil.</p>
-    <p>Afin de garantir un accompagnement nutritionnel personnalisé et sécuritaire, nous vous invitons à revenir à l’écran de sélection et corriger le type d’obésité pour qu’il corresponde à votre IMC réel.</p>
+    <p>Le type d’obésité que vous avez sélectionné dans l’application ne correspond pas à ce résultat. Cette divergence ne nous permet pas de générer un plan nutritionnel fiable et adapté à votre profil. Cette incohérence nous empêche de générer un plan nutritionnel adapté et fiable à votre profil. Afin de garantir un accompagnement nutritionnel personnalisé et sécuritaire, nous vous invitons à revenir à l’écran de sélection et corriger le type d’obésité pour qu’il corresponde à votre IMC réel.</p>
     <p>Une fois cette correction effectuée, notre système pourra générer automatiquement un plan nutritionnel conforme à votre profil.</p>
 
     <p>Cordialement,<br>

@@ -31,8 +31,11 @@ class Utilisateur  extends Authenticatable implements AuthenticatableContract
         'tour_de_hanche',
         'tour_du_cou',
         'niveau_d_activite_physique',
-        'maladie_chronique_id'
-        
+        'maladie_chronique_id',
+        'tdee',
+        'img_notification',
+        'imc_notification',
+        'rth_notification'
     ];
 
     /**

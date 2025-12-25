@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Alerte RTH - Healing Nutrition</title>
+</head>
+<body>
+    <p>Bonjour {{ $userName }},</p>
+    <p>Nous vous remercions d’avoir utilisé l’application Healing Nutrition.</p>
+    <p>Après analyse de vos mesures anthropométriques, nous avons calculé votre <strong>Rapport Taille/Hanche (RTH)</strong>.</p>
+    
+    <h3>🔎 Détails de votre RTH :</h3>
+    <ul>
+        <li>Votre RTH calculé : <strong>{{ $rth }}</strong></li>
+        <li>Seuil recommandé pour votre sexe ({{ $gender === 'M' ? 'Homme' : 'Femme' }}) : <strong>{{ $threshold }}</strong></li>
+    </ul>
+
+    <h3>⚠️ Risques pour la santé :</h3>
+    <p>Une valeur de RTH supérieure au seuil recommandé indique une accumulation excessive de graisse abdominale (graisse viscérale). Cela est associé à des risques accrus de :</p>
+    <ul>
+        <li>Diabète de type 2</li>
+        <li>Hypertension artérielle</li>
+        <li>Maladies cardiovasculaires</li>
+    </ul>
+
+    <h3>💡 Informations :</h3>
+    <p>Un RTH élevé est un indicateur important de santé métabolique. Vu vos antécédents après les calculs, Nous vous recommandons de répondre aux questionnaires de notre application en tenant compte de cette information afin que dans l'élaboration de votre plan nutritionnel, nous puissions vous proposer un accompagnement adapté à votre profil.</p>
+
+    <p>Cordialement,<br>
+    L’équipe Healing Nutrition</p>
+</body>
+</html>

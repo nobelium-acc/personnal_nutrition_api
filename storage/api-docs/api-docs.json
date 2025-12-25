@@ -580,6 +580,78 @@
                 ]
             }
         },
+        "/api/nutrition/recommendation": {
+            "post": {
+                "tags": [
+                    "Nutrition"
+                ],
+                "summary": "Obtenir des recommandations nutritionnelles personnalisées",
+                "description": "Calcule l'apport calorique quotidien et la répartition des macronutriments en fonction de l'objectif de l'utilisateur, de ses pathologies et de son niveau d'activité.",
+                "operationId": "7ff34cd0e4a5c7e662b0cc4076c9c82b",
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "user_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Recommandations générées",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "tdee": {
+                                            "type": "number",
+                                            "example": 2500
+                                        },
+                                        "apport_calorique": {
+                                            "type": "number",
+                                            "example": 2000
+                                        },
+                                        "deficit_calorique": {
+                                            "type": "integer",
+                                            "example": 500
+                                        },
+                                        "macronutriments": {
+                                            "properties": {
+                                                "distribution": {
+                                                    "type": "object"
+                                                },
+                                                "grammes": {
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/user-infos/get-user-questions": {
             "get": {
                 "tags": [
@@ -757,7 +829,12 @@
                     "401": {
                         "description": "Non authentifié"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             },
             "post": {
                 "tags": [
@@ -873,7 +950,12 @@
                     "401": {
                         "description": "Non authentifié"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/api/reponses/{id}": {
@@ -921,7 +1003,12 @@
                     "404": {
                         "description": "Réponse non trouvée"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             },
             "put": {
                 "tags": [
@@ -998,7 +1085,12 @@
                     "404": {
                         "description": "Réponse non trouvée"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             },
             "delete": {
                 "tags": [
@@ -1041,7 +1133,12 @@
                     "404": {
                         "description": "Réponse non trouvée"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         }
     },
