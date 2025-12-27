@@ -9,6 +9,8 @@ use App\Mail\ObesityInconsistencyMail;
 use App\Mail\RthWarningMail;
 use App\Mail\ImgInconsistencyMail;
 
+use Illuminate\Support\Facades\DB;
+
 class NutritionController extends Controller
 {
     /**
@@ -120,67 +122,116 @@ class NutritionController extends Controller
              return response()->json(['success' => false, 'message' => 'User not found'], 404);
         }
 
-        // BMR/TDEE Calculation (reuse logic or private method)
+        // Restriction to ID 1 (Obésité modérée) as requested
+        if ($user->maladie_chronique_id != 1) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'La logique de recommandation avancée est actuellement limitée aux profils avec obésité modérée (ID 1).'
+            ], 403);
+        }
+
+        // BMR/TDEE Calculation
         $metrics = $this->calculateBasicMetrics($user);
         if ($metrics instanceof \Illuminate\Http\JsonResponse) return $metrics;
 
         $tdee = $metrics['tdee'];
-        $bmr = $metrics['bmr'];
         $isMale = $metrics['is_male'];
 
-        // Extract Advanced Info from Reponses
+        // Extract Advanced Info from Reponses (Specific to MC ID 1)
         $objective = 'Perte de poids';
         $deficit = 0;
         $weightLossRange = 'Inconnu';
+        $pathologies = ['diabetes' => false, 'hypertension' => false, 'cardio' => false];
 
         foreach ($user->reponse as $rep) {
-            $desc = $rep->question->description ?? '';
-            if (stripos($desc, 'Quel est votre objectif principal') !== false) {
-                $objective = $rep->description ?: $objective;
-            } elseif (stripos($desc, 'quel niveau de changement êtes-vous prêt à suivre') !== false) {
-                if (preg_match('/\((\d+)\s*kcal\)/i', $rep->description, $matches)) {
-                    $deficit = intval($matches[1]);
-                }
-            } elseif (stripos($desc, 'Combien de kg voulez-vous perdre') !== false) {
-                $weightLossRange = $rep->description ?: $weightLossRange;
+            $qid = $rep->question_id;
+            $text = $rep->description ?: '';
+            
+            // If answer is linked to a possible_answer, use that value instead
+            if ($rep->question_possible_answer_id) {
+                $possibleAnswer = DB::table('question_possible_answers')->where('id', $rep->question_possible_answer_id)->first();
+                if ($possibleAnswer) $text = $possibleAnswer->value;
+            }
+
+            switch ($qid) {
+                case 89: // Objectif principal
+                    $objective = $text;
+                    break;
+                case 90: // Kg à perdre
+                    $weightLossRange = $text;
+                    break;
+                case 91: // Niveau de changement (Déficit)
+                    if (preg_match('/(\d+)\s*kcal/i', $text, $matches)) {
+                        $deficit = intval($matches[1]);
+                    }
+                    break;
+                case 66: // Antécédents
+                    if (stripos($text, 'Oui') !== false) {
+                        // Logic handled below in Q67/Q70
+                    }
+                    break;
+                case 67: // Si oui, lequel ?
+                    if (stripos($text, 'diabète') !== false) $pathologies['diabetes'] = true;
+                    if (stripos($text, 'hypertension') !== false || stripos($text, 'tension') !== false) $pathologies['hypertension'] = true;
+                    if (stripos($text, 'cardio') !== false || stripos($text, 'coeur') !== false) $pathologies['cardio'] = true;
+                    break;
+                case 70: // Médicaments
+                    if (stripos($text, 'Insuline') !== false || stripos($text, 'glycémie') !== false) $pathologies['diabetes'] = true;
+                    if (stripos($text, 'tension artérielle') !== false) $pathologies['hypertension'] = true;
+                    if (stripos($text, 'cholestérol') !== false || stripos($text, 'cardiaque') !== false) $pathologies['cardio'] = true;
+                    break;
             }
         }
 
         $isWeightLoss = (stripos($objective, 'Perte de poids') !== false);
-        $isFitness = (stripos($objective, 'Améliorer votre forme physique') !== false);
+        $isFitness = (stripos($objective, 'forme physique') !== false);
 
-        // Apport Calorique with Fitness Logic
+        // Apport Calorique Calculation
         $apportCalorique = $tdee - $deficit;
+        
         if ($isFitness) {
+            // Fitness logic: Apport = TDEE - (TDEE × % déficit)
+            // TDEE < 2000 -> 5%, 2000-3000 -> 4%, > 3000 -> 3%
             $pct = ($tdee < 2000) ? 0.05 : (($tdee <= 3000) ? 0.04 : 0.03);
-            $calcDeficit = $tdee * $pct;
-            $deficit = round(min(300, max($deficit, $calcDeficit)));
+            $calcDeficit = round($tdee * $pct);
+            
+            // Limit deficit to 300 kcal for fitness
+            $deficit = min(300, $calcDeficit);
             $apportCalorique = $tdee - $deficit;
         }
 
-        // Safety Check
+        // Safety Check (1200 kcal for female, 1500 kcal for male)
         $minThreshold = $isMale ? 1500 : 1200;
         $lowCalNotification = false;
+        
         if ($apportCalorique < $minThreshold) {
             $warningData = [
                 'gender' => $isMale ? 'Homme' : 'Femme',
                 'objectif' => $objective,
-                'tdee' => $tdee,
+                'tdee' => round($tdee),
                 'deficit' => $deficit,
-                'apport' => $apportCalorique
+                'apport' => round($apportCalorique)
             ];
             Mail::to($user->email)->send(new \App\Mail\LowCalorieWarningMail($user->nom . ' ' . $user->prenom, $warningData, $minThreshold));
             $lowCalNotification = true;
         }
 
-        $declaredType = $user->maladieChronique ? $user->maladieChronique->type : 'Inconnu';
-        $macros = $this->calculateMacros($declaredType, $user->niveau_d_activite_physique, $deficit, $isWeightLoss, $isFitness, $apportCalorique, $weightLossRange);
+        // Macronutrients Distribution
+        $macros = $this->calculateMacrosEnhanced($user->niveau_d_activite_physique, $deficit, $isWeightLoss, $isFitness, $apportCalorique, $weightLossRange, $pathologies);
 
         return response()->json([
             'success' => true,
-            'tdee' => $tdee,
-            'apport_calorique' => $apportCalorique,
+            'user_profile' => [
+                'nom' => $user->nom,
+                'prenom' => $user->prenom,
+                'sexe' => $isMale ? 'Homme' : 'Femme',
+                'objectif' => $objective,
+                'pathologies_detectees' => array_keys(array_filter($pathologies))
+            ],
+            'tdee' => round($tdee, 2),
+            'apport_calorique' => round($apportCalorique, 2),
             'deficit_calorique' => $deficit,
+            'unite_calorique' => 'kcal',
             'macronutriments' => $macros,
             'low_calorie_notification' => $lowCalNotification
         ]);
@@ -293,24 +344,17 @@ class NutritionController extends Controller
         ]);
     }
 
-    private function calculateMacros($declaredType, $niveauPhysique, $deficit, $isWeightLoss, $isFitness, $apportCalorique, $weightLossRange = 'Inconnu')
+    private function calculateMacrosEnhanced($activity, $deficit, $isWeightLoss, $isFitness, $apportCalorique, $weightLossRange, $pathologies)
     {
         // Default Distribution (General Case / Fallback)
         $pProt = 30; $pGlu = 40; $pLip = 30;
 
-        // Pathologies Check
-        $hasDiabetes = (stripos($declaredType, 'Diabète') !== false);
-        $hasHypertension = (stripos($declaredType, 'Hypertension') !== false || stripos($declaredType, 'Tension') !== false);
-        $hasCardio = (stripos($declaredType, 'Cardiovasculaire') !== false || stripos($declaredType, 'Coeur') !== false);
-        $noPathology = !$hasDiabetes && !$hasHypertension && !$hasCardio;
-
-        // Activity Level Mapping for Switch
-        $act = $niveauPhysique; 
+        $hasDiabetes = $pathologies['diabetes'];
+        $hasHypertension = $pathologies['hypertension'];
+        $hasCardio = $pathologies['cardio'];
 
         if ($isWeightLoss) {
-            // WEIGHT LOSS LOGIC
-
-            // Determine Deficit Category (<5kg, 5-10kg, >10kg based on questionnaire answer or deficit value)
+            // Determine Range Category
             $range = 'low'; // < 5kg
             if (stripos($weightLossRange, 'Plus de 10 kg') !== false) {
                 $range = 'high';
@@ -319,113 +363,101 @@ class NutritionController extends Controller
             } elseif (stripos($weightLossRange, 'Moins de 5 kg') !== false) {
                 $range = 'low';
             } else {
-                // Fallback to deficit value if range question not answered
-                if ($deficit >= 700) { $range = 'high'; }
-                elseif ($deficit >= 500) { $range = 'mid'; }
+                if ($deficit >= 700) $range = 'high';
+                elseif ($deficit >= 500) $range = 'mid';
             }
 
             if ($hasDiabetes) {
                 // TABLES 9, 12, 15
                 if ($range === 'low') { // Table 9
-                    if ($act === "Sédentaire") { $pProt=30; $pGlu=35; $pLip=35; }
-                    elseif ($act === "Légèrement actif") { $pProt=30; $pGlu=40; $pLip=30; }
-                    elseif ($act === "Modérément actif") { $pProt=25; $pGlu=45; $pLip=30; }
-                    elseif ($act === "Très actif") { $pProt=25; $pGlu=48; $pLip=27; }
-                    elseif ($act === "Extrêmement actif") { $pProt=25; $pGlu=50; $pLip=25; }
+                    if ($activity === "Sédentaire") { $pProt=30; $pGlu=35; $pLip=35; }
+                    elseif ($activity === "Légèrement actif") { $pProt=30; $pGlu=40; $pLip=30; }
+                    elseif ($activity === "Modérément actif") { $pProt=25; $pGlu=45; $pLip=30; }
+                    elseif ($activity === "Très actif") { $pProt=25; $pGlu=48; $pLip=27; }
+                    else { $pProt=25; $pGlu=50; $pLip=25; }
                 } elseif ($range === 'mid') { // Table 12
-                    if ($act === "Sédentaire") { $pProt=30; $pGlu=35; $pLip=35; } 
-                     elseif ($act === "Légèrement actif") { $pProt=30; $pGlu=40; $pLip=30; }
-                     elseif ($act === "Modérément actif") { $pProt=25; $pGlu=45; $pLip=30; }
-                     elseif ($act === "Très actif") { $pProt=25; $pGlu=48; $pLip=27; }
-                     elseif ($act === "Extrêmement actif") { $pProt=25; $pGlu=50; $pLip=25; }
-                } elseif ($range === 'high') { // Table 15
-                     if ($act === "Sédentaire") { $pProt=30; $pGlu=35; $pLip=35; }
-                     elseif ($act === "Légèrement actif") { $pProt=28; $pGlu=40; $pLip=32; }
-                     elseif ($act === "Modérément actif") { $pProt=25; $pGlu=43; $pLip=32; }
-                     elseif ($act === "Très actif") { $pProt=25; $pGlu=48; $pLip=27; }
-                     elseif ($act === "Extrêmement actif") { $pProt=25; $pGlu=50; $pLip=25; }
+                    if ($activity === "Sédentaire") { $pProt=30; $pGlu=35; $pLip=35; } 
+                    elseif ($activity === "Légèrement actif") { $pProt=30; $pGlu=40; $pLip=30; }
+                    elseif ($activity === "Modérément actif") { $pProt=25; $pGlu=45; $pLip=30; }
+                    elseif ($activity === "Très actif") { $pProt=25; $pGlu=48; $pLip=27; }
+                    else { $pProt=25; $pGlu=50; $pLip=25; }
+                } else { // Table 15
+                    if ($activity === "Sédentaire") { $pProt=30; $pGlu=35; $pLip=35; }
+                    elseif ($activity === "Légèrement actif") { $pProt=28; $pGlu=40; $pLip=32; }
+                    elseif ($activity === "Modérément actif") { $pProt=25; $pGlu=43; $pLip=32; }
+                    elseif ($activity === "Très actif") { $pProt=25; $pGlu=48; $pLip=27; }
+                    else { $pProt=25; $pGlu=50; $pLip=25; }
                 }
             } elseif ($hasHypertension) {
                 // TABLES 10, 13, 16
                 if ($range === 'low') { // Table 10
-                    if ($act === "Sédentaire") { $pProt=30; $pGlu=40; $pLip=30; }
-                    elseif ($act === "Légèrement actif") { $pProt=28; $pGlu=44; $pLip=28; }
-                    elseif ($act === "Modérément actif") { $pProt=25; $pGlu=45; $pLip=30; }
-                    elseif ($act === "Très actif") { $pProt=25; $pGlu=48; $pLip=27; }
-                    elseif ($act === "Extrêmement actif") { $pProt=25; $pGlu=50; $pLip=25; }
+                    if ($activity === "Sédentaire") { $pProt=30; $pGlu=40; $pLip=30; }
+                    elseif ($activity === "Légèrement actif") { $pProt=28; $pGlu=44; $pLip=28; }
+                    elseif ($activity === "Modérément actif") { $pProt=25; $pGlu=45; $pLip=30; }
+                    elseif ($activity === "Très actif") { $pProt=25; $pGlu=48; $pLip=27; }
+                    else { $pProt=25; $pGlu=50; $pLip=25; }
                 } elseif ($range === 'mid') { // Table 13
-                    if ($act === "Sédentaire") { $pProt=29; $pGlu=41; $pLip=30; }
-                    elseif ($act === "Légèrement actif") { $pProt=29; $pGlu=44; $pLip=30; }
-                    elseif ($act === "Modérément actif") { $pProt=25; $pGlu=45; $pLip=30; }
-                    elseif ($act === "Très actif") { $pProt=25; $pGlu=48; $pLip=27; }
-                    elseif ($act === "Extrêmement actif") { $pProt=25; $pGlu=50; $pLip=25; }
-                } elseif ($range === 'high') { // Table 16
-                    if ($act === "Sédentaire") { $pProt=30; $pGlu=40; $pLip=30; }
-                    elseif ($act === "Légèrement actif") { $pProt=28; $pGlu=44; $pLip=28; }
-                    elseif ($act === "Modérément actif") { $pProt=25; $pGlu=45; $pLip=30; }
-                    elseif ($act === "Très actif") { $pProt=25; $pGlu=48; $pLip=27; }
-                    elseif ($act === "Extrêmement actif") { $pProt=25; $pGlu=50; $pLip=25; }
+                    if ($activity === "Sédentaire") { $pProt=29; $pGlu=41; $pLip=30; }
+                    elseif ($activity === "Légèrement actif") { $pProt=29; $pGlu=44; $pLip=30; }
+                    elseif ($activity === "Modérément actif") { $pProt=25; $pGlu=45; $pLip=30; }
+                    elseif ($activity === "Très actif") { $pProt=25; $pGlu=48; $pLip=27; }
+                    else { $pProt=25; $pGlu=50; $pLip=25; }
+                } else { // Table 16
+                    if ($activity === "Sédentaire") { $pProt=30; $pGlu=40; $pLip=30; }
+                    elseif ($activity === "Légèrement actif") { $pProt=28; $pGlu=44; $pLip=28; }
+                    elseif ($activity === "Modérément actif") { $pProt=25; $pGlu=45; $pLip=30; }
+                    elseif ($activity === "Très actif") { $pProt=25; $pGlu=48; $pLip=27; }
+                    else { $pProt=25; $pGlu=50; $pLip=25; }
                 }
             } elseif ($hasCardio) {
-                 // TABLES 11, 14, 17
-                 if ($range === 'low') { // Table 11
-                    if ($act === "Sédentaire") { $pProt=30; $pGlu=40; $pLip=30; }
-                    elseif ($act === "Légèrement actif") { $pProt=30; $pGlu=44; $pLip=26; }
-                    elseif ($act === "Modérément actif") { $pProt=25; $pGlu=45; $pLip=30; }
-                    elseif ($act === "Très actif") { $pProt=25; $pGlu=48; $pLip=27; }
-                    elseif ($act === "Extrêmement actif") { $pProt=25; $pGlu=50; $pLip=25; }
-                 } elseif ($range === 'mid') { // Table 14
-                    if ($act === "Sédentaire") { $pProt=30; $pGlu=41; $pLip=29; }
-                    elseif ($act === "Légèrement actif") { $pProt=28; $pGlu=45; $pLip=27; }
-                    elseif ($act === "Modérément actif") { $pProt=25; $pGlu=45; $pLip=30; }
-                    elseif ($act === "Très actif") { $pProt=25; $pGlu=48; $pLip=27; }
-                    elseif ($act === "Extrêmement actif") { $pProt=25; $pGlu=50; $pLip=25; }
-                 } elseif ($range === 'high') { // Table 17
-                    if ($act === "Sédentaire") { $pProt=30; $pGlu=40; $pLip=30; }
-                    elseif ($act === "Légèrement actif") { $pProt=28; $pGlu=45; $pLip=27; }
-                    elseif ($act === "Modérément actif") { $pProt=25; $pGlu=45; $pLip=30; }
-                    elseif ($act === "Très actif") { $pProt=25; $pGlu=48; $pLip=27; }
-                    elseif ($act === "Extrêmement actif") { $pProt=25; $pGlu=50; $pLip=25; }
-                 }
+                // TABLES 11, 14, 17
+                if ($range === 'low') { // Table 11
+                    if ($activity === "Sédentaire") { $pProt=30; $pGlu=40; $pLip=30; }
+                    elseif ($activity === "Légèrement actif") { $pProt=30; $pGlu=44; $pLip=26; }
+                    elseif ($activity === "Modérément actif") { $pProt=25; $pGlu=45; $pLip=30; }
+                    elseif ($activity === "Très actif") { $pProt=25; $pGlu=48; $pLip=27; }
+                    else { $pProt=25; $pGlu=50; $pLip=25; }
+                } elseif ($range === 'mid') { // Table 14
+                    if ($activity === "Sédentaire") { $pProt=30; $pGlu=41; $pLip=29; }
+                    elseif ($activity === "Légèrement actif") { $pProt=28; $pGlu=45; $pLip=27; }
+                    elseif ($activity === "Modérément actif") { $pProt=25; $pGlu=45; $pLip=30; }
+                    elseif ($activity === "Très actif") { $pProt=25; $pGlu=48; $pLip=27; }
+                    else { $pProt=25; $pGlu=50; $pLip=25; }
+                } else { // Table 17
+                    if ($activity === "Sédentaire") { $pProt=30; $pGlu=40; $pLip=30; }
+                    elseif ($activity === "Légèrement actif") { $pProt=28; $pGlu=45; $pLip=27; }
+                    elseif ($activity === "Modérément actif") { $pProt=25; $pGlu=45; $pLip=30; }
+                    elseif ($activity === "Très actif") { $pProt=25; $pGlu=48; $pLip=27; }
+                    else { $pProt=25; $pGlu=50; $pLip=25; }
+                }
             } else {
                 // NO PATHOLOGY (Tables 21, 22, 23)
-                 if ($range === 'low') { // Table 21
-                    if ($act === "Sédentaire") { $pProt=30; $pGlu=35; $pLip=35; }
-                    elseif ($act === "Légèrement actif") { $pProt=30; $pGlu=40; $pLip=30; }
-                    elseif ($act === "Modérément actif") { $pProt=27; $pGlu=45; $pLip=28; }
-                    elseif ($act === "Très actif") { $pProt=25; $pGlu=50; $pLip=25; }
-                    elseif ($act === "Extrêmement actif") { $pProt=25; $pGlu=55; $pLip=20; }
-                 } elseif ($range === 'mid') { // Table 22
-                    if ($act === "Sédentaire") { $pProt=30; $pGlu=35; $pLip=35; }
-                    elseif ($act === "Légèrement actif") { $pProt=30; $pGlu=40; $pLip=30; }
-                    elseif ($act === "Modérément actif") { $pProt=26; $pGlu=45; $pLip=29; }
-                    elseif ($act === "Très actif") { $pProt=25; $pGlu=50; $pLip=25; }
-                    elseif ($act === "Extrêmement actif") { $pProt=25; $pGlu=55; $pLip=20; }
-                 } elseif ($range === 'high') { // Table 23
-                    if ($act === "Sédentaire") { $pProt=30; $pGlu=35; $pLip=35; }
-                    elseif ($act === "Légèrement actif") { $pProt=30; $pGlu=40; $pLip=30; }
-                    elseif ($act === "Modérément actif") { $pProt=27; $pGlu=45; $pLip=28; }
-                    elseif ($act === "Très actif") { $pProt=25; $pGlu=50; $pLip=25; }
-                    elseif ($act === "Extrêmement actif") { $pProt=25; $pGlu=55; $pLip=20; }
-                 }
+                if ($range === 'low') { // Table 21
+                    if ($activity === "Sédentaire") { $pProt=30; $pGlu=35; $pLip=35; }
+                    elseif ($activity === "Légèrement actif") { $pProt=30; $pGlu=40; $pLip=30; }
+                    elseif ($activity === "Modérément actif") { $pProt=27; $pGlu=45; $pLip=28; }
+                    elseif ($activity === "Très actif") { $pProt=25; $pGlu=50; $pLip=25; }
+                    else { $pProt=25; $pGlu=55; $pLip=20; }
+                } elseif ($range === 'mid') { // Table 22
+                    if ($activity === "Sédentaire") { $pProt=30; $pGlu=35; $pLip=35; }
+                    elseif ($activity === "Légèrement actif") { $pProt=30; $pGlu=40; $pLip=30; }
+                    elseif ($activity === "Modérément actif") { $pProt=26; $pGlu=45; $pLip=29; }
+                    elseif ($activity === "Très actif") { $pProt=25; $pGlu=50; $pLip=25; }
+                    else { $pProt=25; $pGlu=55; $pLip=20; }
+                } else { // Table 23
+                    if ($activity === "Sédentaire") { $pProt=30; $pGlu=35; $pLip=35; }
+                    elseif ($activity === "Légèrement actif") { $pProt=30; $pGlu=40; $pLip=30; }
+                    elseif ($activity === "Modérément actif") { $pProt=27; $pGlu=45; $pLip=28; }
+                    elseif ($activity === "Très actif") { $pProt=25; $pGlu=50; $pLip=25; }
+                    else { $pProt=25; $pGlu=55; $pLip=20; }
+                }
             }
-
         } elseif ($isFitness) {
-             // FITNESS LOGIC
-             // Prompt says: "Apport = TDEE - (TDEE * % deficit)". 
-             // Without specific macro table for Fitness in provided test.txt, we default to balanced.
-             $pProt = 30; $pGlu = 40; $pLip = 30;
+            // General balanced macros for Fitness
+            $pProt = 30; $pGlu = 40; $pLip = 30;
         }
 
-        // Normalize (ensure sum is 100)
-        $total = $pProt + $pGlu + $pLip;
-        if ($total != 100) {
-            // Adjust Proportional or fix Lipids
-            $pLip = 100 - ($pProt + $pGlu);
-        }
-
-        // Convert to Grams
-        // Glu 4, Prot 4, Lip 9
+        // Final conversion to Grams
         $gProt = round(($apportCalorique * ($pProt/100)) / 4);
         $gGlu = round(($apportCalorique * ($pGlu/100)) / 4);
         $gLip = round(($apportCalorique * ($pLip/100)) / 9);

@@ -11,7 +11,7 @@ class MaladieChronique extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['type'];
+    protected $fillable = ['type', 'nom'];
 
     public function utilisateurs()
     {

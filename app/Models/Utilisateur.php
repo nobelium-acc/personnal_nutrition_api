@@ -71,7 +71,7 @@ class Utilisateur  extends Authenticatable implements AuthenticatableContract
      */
     public function reponse()
     {
-        return $this->hasOne(Reponse::class);
+        return $this->hasMany(Reponse::class);
     }
 
     
