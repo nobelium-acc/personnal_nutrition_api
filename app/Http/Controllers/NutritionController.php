@@ -183,7 +183,7 @@ class NutritionController extends Controller
             }
         }
 
-        $isWeightLoss = (stripos($objective, 'Perte de poids') !== false);
+        $isWeightLoss = (stripos($objective, 'Perte') !== false || stripos($objective, 'Perdre') !== false);
         $isFitness = (stripos($objective, 'forme physique') !== false);
 
         // Apport Calorique Calculation
@@ -233,7 +233,17 @@ class NutritionController extends Controller
             'deficit_calorique' => $deficit,
             'unite_calorique' => 'kcal',
             'macronutriments' => $macros,
-            'low_calorie_notification' => $lowCalNotification
+            'low_calorie_notification' => $lowCalNotification,
+            'suivi_hebdomadaire' => [
+                'colonnes' => ['Semaine', 'Poids (kg)', 'Tour de taille (cm)', 'Energie (1-5)', 'Faim (1-5)', 'Activité physique (heure)', 'Humeur', 'Remarque/Ajustements'],
+                'legendes' => [
+                    'Énergie' => '1 = épuisé·e, 5 = en pleine forme',
+                    'Faim' => '1 = jamais faim, 5 = toujours faim',
+                    'Activité physique' => 'total en heures (ou nombre de séances)',
+                    'Humeur' => 'bonne humeur, neutre ou fatigué·e/irritable'
+                ],
+                'utilisation' => 'À remplir chaque fin de semaine (par ex. dimanche matin) pour surveiller les tendances : stagnation, fatigue, besoin d’ajustement.'
+            ]
         ]);
     }
 
