@@ -463,8 +463,32 @@ class NutritionController extends Controller
                 }
             }
         } elseif ($isFitness) {
-            // General balanced macros for Fitness
-            $pProt = 30; $pGlu = 40; $pLip = 30;
+            // FITNESS LOGIC
+            if ($hasDiabetes) { // Tableau 28
+                if ($activity === "Sédentaire") { $pProt=27; $pGlu=35; $pLip=38; }
+                elseif ($activity === "Légèrement actif") { $pProt=27; $pGlu=38; $pLip=35; }
+                elseif ($activity === "Modérément actif") { $pProt=27; $pGlu=40; $pLip=33; }
+                elseif ($activity === "Très actif") { $pProt=27; $pGlu=43; $pLip=30; }
+                else { $pProt=27; $pGlu=45; $pLip=28; }
+            } elseif ($hasHypertension) { // Tableau 29
+                if ($activity === "Sédentaire") { $pProt=28; $pGlu=37; $pLip=30; }
+                elseif ($activity === "Légèrement actif") { $pProt=27; $pGlu=44; $pLip=29; }
+                elseif ($activity === "Modérément actif") { $pProt=25; $pGlu=45; $pLip=25; }
+                elseif ($activity === "Très actif") { $pProt=25; $pGlu=50; $pLip=22; }
+                else { $pProt=25; $pGlu=45; $pLip=20; }
+            } elseif ($hasCardio) { // Cardio (Tableau sans numéro)
+                if ($activity === "Sédentaire") { $pProt=27; $pGlu=37; $pLip=30; }
+                elseif ($activity === "Légèrement actif") { $pProt=28; $pGlu=42; $pLip=28; }
+                elseif ($activity === "Modérément actif") { $pProt=25; $pGlu=45; $pLip=25; }
+                elseif ($activity === "Très actif") { $pProt=25; $pGlu=45; $pLip=25; }
+                else { $pProt=25; $pGlu=45; $pLip=25; }
+            } else { // No pathology (Tableau 33)
+                if ($activity === "Sédentaire") { $pProt=30; $pGlu=35; $pLip=35; }
+                elseif ($activity === "Légèrement actif") { $pProt=30; $pGlu=42; $pLip=28; }
+                elseif ($activity === "Modérément actif") { $pProt=30; $pGlu=48; $pLip=22; }
+                elseif ($activity === "Très actif") { $pProt=30; $pGlu=53; $pLip=17; }
+                else { $pProt=30; $pGlu=58; $pLip=12; }
+            }
         }
 
         // Final conversion to Grams
