@@ -6,6 +6,7 @@ use App\Models\Reponse;
 use App\Models\Question;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * @OA\Tag(
@@ -39,16 +40,16 @@ class ReponseController extends Controller
      */
     public function index(Request $request)
     {
-        $utilisateurId = auth()->id();
+        $utilisateur = Auth::user();
 
-        if (!$utilisateurId) {
+        if (!$utilisateur) {
              return response()->json([
                 'success' => false,
                 'message' => 'Utilisateur non authentifié',
             ], 401);
         }
 
-        $reponses = Reponse::with('question')->where('utilisateur_id', $utilisateurId)->get();
+        $reponses = Reponse::with('question')->where('utilisateur_id', $utilisateur->id)->get();
 
         return response()->json([
             'success' => true,
@@ -145,14 +146,16 @@ class ReponseController extends Controller
      */
     public function store(Request $request)
     {
-        $utilisateurId = auth()->id();
+        $utilisateur = Auth::user();
 
-        if (!$utilisateurId) {
+        if (!$utilisateur) {
             return response()->json([
                 'success' => false,
                 'message' => 'Utilisateur non authentifié',
             ], 401);
         }
+
+        $utilisateurId = $utilisateur->id;
 
         $validator = Validator::make($request->all(), [
             'reponses' => 'required|array',
@@ -283,7 +286,16 @@ class ReponseController extends Controller
      */
     public function show($id)
     {
-        $reponse = Reponse::find($id);
+        $utilisateur = Auth::user();
+
+        if (!$utilisateur) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisateur non authentifié',
+            ], 401);
+        }
+
+        $reponse = Reponse::where('utilisateur_id', $utilisateur->id)->find($id);
 
         if (!$reponse) {
             return response()->json([
@@ -342,7 +354,16 @@ class ReponseController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $reponseModel = Reponse::find($id);
+        $utilisateur = Auth::user();
+
+        if (!$utilisateur) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisateur non authentifié',
+            ], 401);
+        }
+
+        $reponseModel = Reponse::where('utilisateur_id', $utilisateur->id)->find($id);
 
         if (!$reponseModel) {
             return response()->json([
@@ -454,7 +475,16 @@ class ReponseController extends Controller
      */
     public function destroy($id)
     {
-        $reponse = Reponse::find($id);
+        $utilisateur = Auth::user();
+
+        if (!$utilisateur) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisateur non authentifié',
+            ], 401);
+        }
+
+        $reponse = Reponse::where('utilisateur_id', $utilisateur->id)->find($id);
 
         if (!$reponse) {
             return response()->json([

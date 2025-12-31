@@ -42,10 +42,21 @@ class Handler extends ExceptionHandler
         }
         
         if ($request->expectsJson()) {
+            if ($exception instanceof \Illuminate\Auth\AuthenticationException) {
+                return response()->json([
+                    'status' => 401,
+                    'success' => false,
+                    'message' => 'Unauthenticated.',
+                ], 401);
+            }
+
+            $status = method_exists($exception, 'getStatusCode') ? $exception->getStatusCode() : 500;
+            
             return response()->json([
-                'status' => 500,
+                'status' => $status,
+                'success' => false,
                 'error' => $exception->getMessage()
-            ], 500);
+            ], $status);
         }
 
         return parent::render($request, $exception);

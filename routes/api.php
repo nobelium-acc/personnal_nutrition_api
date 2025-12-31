@@ -39,13 +39,15 @@ Route::middleware('checkadmin')->group(function () {
     Route::delete('/utilisateurs/{id}', [UtilisateurController::class, 'destroy']);
 });
 
-Route::get('/reponses', [ReponseController::class, 'index'])->middleware('user.responses');
-Route::post('/reponses', [ReponseController::class, 'store'])->middleware('validate.reponse');
-Route::get('/reponses/{id}', [ReponseController::class, 'show']);
-Route::put('/reponses/{id}', [ReponseController::class, 'update']);
-Route::delete('/reponses/{id}', [ReponseController::class, 'destroy']);
-Route::post('/nutrition/calculate', [NutritionController::class, 'calculate']);
-Route::post('/nutrition/recommendation', [NutritionController::class, 'recommendation']);
+Route::middleware(['auth:sanctum'])->group(function() {
+    Route::get('/reponses', [ReponseController::class, 'index'])->middleware('user.responses');
+    Route::post('/reponses', [ReponseController::class, 'store']);
+    Route::get('/reponses/{id}', [ReponseController::class, 'show']);
+    Route::put('/reponses/{id}', [ReponseController::class, 'update']);
+    Route::delete('/reponses/{id}', [ReponseController::class, 'destroy']);
+    Route::post('/nutrition/calculate', [NutritionController::class, 'calculate']);
+    Route::post('/nutrition/recommendation', [NutritionController::class, 'recommendation']);
+});
 
 Route::put('/user/{id}/update-maladie-chronique', [UtilisateurController::class, 'updateMaladieChronique']);
 
