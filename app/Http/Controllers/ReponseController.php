@@ -22,7 +22,7 @@ class ReponseController extends Controller
      *     summary="Lister les réponses de l'utilisateur connecté",
      *     description="Récupère les réponses de l'utilisateur actuellement authentifié.",
      *     tags={"Réponses"},
-     *     security={{"bearerAuth":{}}},
+     *     security={{"BearerToken":{}}},
      *     @OA\Response(
      *         response=200,
      *         description="Liste des réponses récupérée avec succès",
@@ -65,7 +65,7 @@ class ReponseController extends Controller
      *     summary="Enregistrer de nouvelles réponses",
      *     description="Enregistre une ou plusieurs réponses pour l'utilisateur connecté.",
      *     tags={"Réponses"},
-     *     security={{"bearerAuth":{}}},
+     *     security={{"BearerToken":{}}},
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
@@ -261,7 +261,7 @@ class ReponseController extends Controller
      *     path="/api/reponses/{id}",
      *     summary="Afficher une réponse spécifique",
      *     tags={"Réponses"},
-     *     security={{"bearerAuth":{}}},
+     *     security={{"BearerToken":{}}},
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
@@ -317,7 +317,7 @@ class ReponseController extends Controller
      *     summary="Mettre à jour une réponse",
      *     description="Met à jour une réponse en respectant la logique de validation (texte vs choix).",
      *     tags={"Réponses"},
-     *     security={{"bearerAuth":{}}},
+     *     security={{"BearerToken":{}}},
      *     @OA\Parameter(
      *         name="id",
      *         in="path",

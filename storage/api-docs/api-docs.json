@@ -575,7 +575,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "BearerToken": []
                     }
                 ]
             }
@@ -647,7 +647,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "BearerToken": []
                     }
                 ]
             }
@@ -832,7 +832,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "BearerToken": []
                     }
                 ]
             },
@@ -953,7 +953,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "BearerToken": []
                     }
                 ]
             }
@@ -1006,7 +1006,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "BearerToken": []
                     }
                 ]
             },
@@ -1088,7 +1088,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "BearerToken": []
                     }
                 ]
             },

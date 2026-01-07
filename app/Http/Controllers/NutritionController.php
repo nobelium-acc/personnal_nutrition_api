@@ -19,7 +19,7 @@ class NutritionController extends Controller
      *     summary="Calculer les indicateurs nutritionnels (IMC, RTH, IMG, BMR, TDEE)",
      *     description="Effectue les calculs nutritionnels basés sur les données stockées de l'utilisateur (poids, taille, tours, etc.). Compare également le résultat avec le type d'obésité déclaré par l'utilisateur (via sa maladie chronique) et envoie un email en cas d'incohérence.",
      *     tags={"Nutrition"},
-     *     security={{"bearerAuth":{}}},
+     *     security={{"BearerToken":{}}},
      *     @OA\RequestBody(
      *         description="Exemple de corps de requête pour tester (user_id est optionnel si authentifié)",
      *         required=false,
@@ -83,7 +83,7 @@ class NutritionController extends Controller
      *     summary="Obtenir des recommandations nutritionnelles personnalisées",
      *     description="Calcule l'apport calorique quotidien et la répartition des macronutriments en fonction de l'objectif de l'utilisateur, de ses pathologies et de son niveau d'activité.",
      *     tags={"Nutrition"},
-     *     security={{"bearerAuth":{}}},
+     *     security={{"BearerToken":{}}},
      *     @OA\RequestBody(
      *         required=false,
      *         @OA\JsonContent(
@@ -708,6 +708,24 @@ class NutritionController extends Controller
         }
 
         return ['titre' => "Aide et Gestion du Poids", 'contenu' => $content];
+    }
+
+    private function getBehavioralAdvicePlan($responses)
+    {
+        $q85 = $responses[85]['text'] ?? '';
+        $q86 = $responses[86]['text'] ?? '';
+
+        $content = "";
+
+        if (stripos($q85, 'Oui') !== false) {
+            $content .= "🧠 ALIMENTATION ÉMOTIONNELLE : Vous mangez par stress ou ennui. Avant de manger, buvez un grand verre d'eau et attendez 10 min pour évaluer la vraie faim.\n";
+        }
+
+        if (stripos($q86, 'Oui') !== false) {
+            $content .= "🍽️ SATIÉTÉ : Vous finissez votre assiette sans faim. Apprenez à laisser des restes. Votre corps n'est pas une poubelle, mieux vaut jeter que surcharger votre métabolisme.\n";
+        }
+
+        return $content ? ['titre' => "Comportements et Psychologie", 'contenu' => $content] : null;
     }
 
     private function generateDynamicFoodGuide($user, $macroGrams)
