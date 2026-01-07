@@ -1,0 +1,54 @@
+Algorithme à utiliser (version complète avec méthode par priorité)
+1.	Entrée des données utilisateur
+• Connaître les valeurs en grammes des macronutriments (lipides, glucides, protéines) calculées pour atteindre l’objectif de perte de poids de l’utilisateur.
+2.	Guide alimentaire
+• Avoir le guide alimentaire en fonction du niveau d’activité de l’utilisateur sur 2 jours type :
+o	Jour 1 : Petit-déjeuner (option A/B) ; Déjeuner (option A/B) ; Dîner (option A/B + collations)
+o	Jour 2 : Petit-déjeuner (option A/B) ; Déjeuner (option A/B) ; Dîner (option A/B + collations)
+• Disposer des valeurs en grammes pour 100 g des macronutriments contenus dans chaque aliment du repas, obtenues depuis CIQUAL 2020.
+3.	Génération des combinaisons de menus pour 1 mois
+• Créer des combinaisons à partir des deux jours type pour obtenir un menu journalier similaire au guide (avec petit-déj, déjeuner, dîner + collations).
+• Stocker ces combinaisons une fois obtenues pour pouvoir les utiliser ultérieurement.
+4.	Application du facteur d’ajustement
+
+
+Méthode par priorité appliquée
+5.	Principe
+o	Tous les macronutriments n’ont pas le même impact physiologique.
+o	Appliquer des contraintes strictes aux macronutriments prioritaires et laisser les moins prioritaires absorber l’ajustement.
+6.	Ordre de priorité recommandé (obésité + diabète type 2)
+1.	Glucides → contrôle glycémique
+2.	Protéines → satiété et maintien musculaire
+3.	Lipides → variable d’ajustement
+ 
+9.	Détermination du facteur d’ajustement final
+ 
+10.	Cas où aucune combinaison ne respecte les priorités
+a.	Relâcher progressivement les contraintes des macronutriments moins prioritaires :
+1.	Lipides (70 % → 65 %)
+2.	Protéines (85 % → 80 %)
+o	Ne jamais relâcher la contrainte des glucides en premier.
+
+
+11.	Intégration des collations
+•	Les collations ne participent pas au calcul du facteur d’ajustement principal.
+1. Définir le nombre de collations par utilisateur
+Pour chaque utilisateur, selon son niveau d’activité, tu détermines le nombre de collations possibles/jour :
+Niveau d’activité	Nombre de collations / jour
+Sédentaire	0 – 1
+Légèrement actif	1
+Modérément actif	1 – 2
+Très actif	2
+Extrêmement actif	2 (obligatoire)
+
+2. Application dans l’algorithme de génération des menus
+1.	Lors de la création des combinaisons pour chaque jour :
+o	Ajouter les collations uniquement si le niveau d’activité le permet.
+o	Si l’utilisateur est sédentaire, certaines combinaisons peuvent ne pas inclure de collation.
+o	Pour un utilisateur extrêmement actif, toutes les combinaisons doivent inclure 2 collations.
+2.	Calcul des macros :
+o	Les collations peuvent être exclues du facteur d’ajustement principal pour les repas, mais il faut vérifier qu’elles respectent les plafonds définis (ou pourcentage fixe des macros).
+3.	Choix en fonction du tableau  :
+o	Utiliser le tableau en dessus pour l’intégration des collations 
+
+

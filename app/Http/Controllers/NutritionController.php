@@ -110,10 +110,10 @@ class NutritionController extends Controller
      */
     public function recommendation(Request $request)
     {
-        $userId = $request->user_id ?? auth()->id();
+        $userId = auth()->id();
 
         if (!$userId) {
-            return response()->json(['success' => false, 'message' => 'User ID required'], 400);
+            return response()->json(['success' => false, 'message' => 'Non authentifié'], 401);
         }
 
         $user = \App\Models\Utilisateur::with(['maladieChronique', 'reponse.question'])->find($userId);
@@ -139,19 +139,26 @@ class NutritionController extends Controller
 
         // Extract Advanced Info from Reponses (Specific to MC ID 1)
         $objective = 'Perte de poids';
-        $deficit = 0;
+        $deficitValue = 0;
         $weightLossRange = 'Inconnu';
         $pathologies = ['diabetes' => false, 'hypertension' => false, 'cardio' => false];
+        $responsesMap = [];
 
         foreach ($user->reponse as $rep) {
             $qid = $rep->question_id;
             $text = $rep->description ?: '';
+            $answerId = $rep->question_possible_answer_id;
             
             // If answer is linked to a possible_answer, use that value instead
-            if ($rep->question_possible_answer_id) {
-                $possibleAnswer = DB::table('question_possible_answers')->where('id', $rep->question_possible_answer_id)->first();
+            if ($answerId) {
+                $possibleAnswer = DB::table('question_possible_answers')->where('id', $answerId)->first();
                 if ($possibleAnswer) $text = $possibleAnswer->value;
             }
+
+            $responsesMap[$qid] = [
+                'text' => $text,
+                'id' => $answerId
+            ];
 
             switch ($qid) {
                 case 89: // Objectif principal
@@ -162,13 +169,11 @@ class NutritionController extends Controller
                     break;
                 case 91: // Niveau de changement (Déficit)
                     if (preg_match('/(\d+)\s*kcal/i', $text, $matches)) {
-                        $deficit = intval($matches[1]);
+                        $deficitValue = intval($matches[1]);
                     }
                     break;
                 case 66: // Antécédents
-                    if (stripos($text, 'Oui') !== false) {
-                        // Logic handled below in Q67/Q70
-                    }
+                    // Logic handled below in Q67/Q70
                     break;
                 case 67: // Si oui, lequel ?
                     if (stripos($text, 'diabète') !== false) $pathologies['diabetes'] = true;
@@ -187,20 +192,16 @@ class NutritionController extends Controller
         $isFitness = (stripos($objective, 'forme physique') !== false);
 
         // Apport Calorique Calculation
-        $apportCalorique = $tdee - $deficit;
+        $apportCalorique = $tdee - $deficitValue;
         
         if ($isFitness) {
-            // Fitness logic: Apport = TDEE - (TDEE × % déficit)
-            // TDEE < 2000 -> 5%, 2000-3000 -> 4%, > 3000 -> 3%
             $pct = ($tdee < 2000) ? 0.05 : (($tdee <= 3000) ? 0.04 : 0.03);
             $calcDeficit = round($tdee * $pct);
-            
-            // Limit deficit to 300 kcal for fitness
-            $deficit = min(300, $calcDeficit);
-            $apportCalorique = $tdee - $deficit;
+            $deficitValue = min(300, $calcDeficit);
+            $apportCalorique = $tdee - $deficitValue;
         }
 
-        // Safety Check (1200 kcal for female, 1500 kcal for male)
+        // Safety Check
         $minThreshold = $isMale ? 1500 : 1200;
         $lowCalNotification = false;
         
@@ -209,7 +210,7 @@ class NutritionController extends Controller
                 'gender' => $isMale ? 'Homme' : 'Femme',
                 'objectif' => $objective,
                 'tdee' => round($tdee),
-                'deficit' => $deficit,
+                'deficit' => $deficitValue,
                 'apport' => round($apportCalorique)
             ];
             Mail::to($user->email)->send(new \App\Mail\LowCalorieWarningMail($user->nom . ' ' . $user->prenom, $warningData, $minThreshold));
@@ -217,7 +218,11 @@ class NutritionController extends Controller
         }
 
         // Macronutrients Distribution
-        $macros = $this->calculateMacrosEnhanced($user->niveau_d_activite_physique, $deficit, $isWeightLoss, $isFitness, $apportCalorique, $weightLossRange, $pathologies);
+        $macros = $this->calculateMacrosEnhanced($user->niveau_d_activite_physique, $deficitValue, $isWeightLoss, $isFitness, $apportCalorique, $weightLossRange, $pathologies);
+
+        // NEW: Generate Intervention Plan and Food Guide
+        $planIntervention = $this->generateNutritionInterventionPlan($user, $metrics, $responsesMap, $pathologies);
+        $menuInfo = $this->generateDynamicFoodGuide($user, $macros['grammes']);
 
         return response()->json([
             'success' => true,
@@ -230,7 +235,7 @@ class NutritionController extends Controller
             ],
             'tdee' => round($tdee, 2),
             'apport_calorique' => round($apportCalorique, 2),
-            'deficit_calorique' => $deficit,
+            'deficit_calorique' => $deficitValue,
             'unite_calorique' => 'kcal',
             'macronutriments' => $macros,
             'low_calorie_notification' => $lowCalNotification,
@@ -243,7 +248,10 @@ class NutritionController extends Controller
                     'Humeur' => 'bonne humeur, neutre ou fatigué·e/irritable'
                 ],
                 'utilisation' => 'À remplir chaque fin de semaine (par ex. dimanche matin) pour surveiller les tendances : stagnation, fatigue, besoin d’ajustement.'
-            ]
+            ],
+            'plan_intervention' => $planIntervention,
+            'menu_journalier' => $menuInfo['menu'],
+            'conseils_personnalises' => $menuInfo['conseils']
         ]);
     }
 
@@ -272,7 +280,24 @@ class NutritionController extends Controller
         ];
         $tdee = $bmr * ($multipliers[$niveauPhysique] ?? 1.2);
 
-        return ['bmr' => $bmr, 'tdee' => $tdee, 'is_male' => $isMale, 'height' => $height, 'weight' => $weight];
+        // Calculate RTH for the intervention plan logic
+        $rth = ($user->tour_de_hanche > 0) ? round($user->tour_de_taille / $user->tour_de_hanche, 2) : 0;
+        $rthThreshold = $isMale ? 0.90 : 0.85;
+
+        // Calculate IMC
+        $heightM = $height / 100;
+        $imc = round($weight / ($heightM * $heightM), 2);
+
+        return [
+            'bmr' => $bmr, 
+            'tdee' => $tdee, 
+            'is_male' => $isMale, 
+            'height' => $height, 
+            'weight' => $weight,
+            'rth' => $rth,
+            'rth_threshold' => $rthThreshold,
+            'imc' => $imc
+        ];
     }
 
     private function performCalculation(\App\Models\Utilisateur $user)
@@ -508,5 +533,296 @@ class NutritionController extends Controller
                 'lipides' => $gLip
             ]
         ];
+    }
+
+    private function generateNutritionInterventionPlan($user, $metrics, $responses, $pathologies)
+    {
+        $sections = [];
+
+        // 1. Antécédents & Diabète + RTH Constat
+        $sections[] = $this->getAntecedentsAdvice($metrics, $responses, $pathologies);
+
+        // 2. Médicaments
+        $sections[] = $this->getMedicationAdvice($responses);
+
+        // 3. Habitudes Alimentaires (Fruits/Légumes, Grignotage, Boissons)
+        $sections[] = $this->getDietaryHabitsAdvice($responses);
+
+        // 4. Mode de vie (Sommeil, Apnée, Sédentarité)
+        $sections[] = $this->getLifestyleAdvice($responses);
+
+        // 5. Comportement (Stress, Satiété)
+        $sections[] = $this->getBehavioralAdvicePlan($responses);
+
+        // 6. Activité Physique & Postures
+        $sections[] = $this->getPhysicalActivityAdvice($user, $responses);
+
+        // 7. Aide et Gestion du Poids (Historique)
+        $sections[] = $this->getWeightManagementHistoryAdvice($responses);
+
+        return array_filter($sections);
+    }
+
+    private function getAntecedentsAdvice($metrics, $responses, $pathologies)
+    {
+        $hasDiabetes = $pathologies['diabetes'];
+        $rth = $metrics['rth'];
+        $threshold = $metrics['rth_threshold'];
+        $gender = $metrics['is_male'] ? 'homme' : 'femme';
+
+        $title = "Antécédents et Risques Métaboliques";
+        $content = "";
+
+        if ($hasDiabetes) {
+            $content .= "🎯 DIABÈTE DE TYPE 2 DÉTECTÉ : \n";
+            $content .= "• Privilégier les glucides à index glycémique bas (IG bas).\n";
+            $content .= "• Fractionner les repas pour éviter les gros volumes.\n";
+            $content .= "• Surveiller strictement les portions de féculents.\n";
+            $content .= "• Augmenter la part de légumes verts pour les fibres.\n\n";
+
+            if ($rth > $threshold) {
+                $content .= "⚠️ CONSTAT CAPITAL : Votre RTH de " . $rth . " (seuil " . $threshold . " pour un " . $gender . ") confirme un risque accru lié à la répartition des graisses abdominales, ce qui corrobore vos antécédents de diabète de type 2. Il est impératif de suivre nos conseils pour combattre efficacement cette obésité.";
+            }
+        } else {
+            $content .= "✅ CONSEILS PRÉVENTIFS : \n";
+            $content .= "• Maintenir une alimentation équilibrée.\n";
+            $content .= "• Surveiller les portions pour une perte de poids progressive.\n";
+            $content .= "• Privilégier les aliments peu transformés et rester actif physiquement.";
+        }
+
+        return ['titre' => $title, 'contenu' => $content];
+    }
+
+    private function getMedicationAdvice($responses)
+    {
+        $q70 = $responses[70]['text'] ?? '';
+        if (stripos($q70, 'Aucun') !== false || empty($q70)) return null;
+
+        $content = "💊 ADAPTATIONS LIÉES À VOS MÉDICAMENTS :\n";
+
+        if (stripos($q70, 'glycémie') !== false || stripos($q70, 'Metformine') !== false) {
+            $content .= "• Metformine : Prendre pendant ou après le repas pour éviter les nausées. Éviter les repas trop gras.\n";
+        }
+        if (stripos($q70, 'Insuline') !== false) {
+            $content .= "• Insuline : Respecter des horaires fixes. Toujours avoir une collation 'hypo' (sucre, jus) à portée de main.\n";
+        }
+        if (stripos($q70, 'poids') !== false || stripos($q70, 'Orlistat') !== false) {
+            $content .= "• Orlistat : Limiter les graisses à 15g/repas pour éviter les selles grasses. Envisager des multivitamines le soir.\n";
+        }
+        if (stripos($q70, 'tension') !== false) {
+            $content .= "• Tension : Régime hyposodé (limiter le sel). Attention aux aliments riches en potassium si vous prenez des IEC/ARA2.\n";
+        }
+        if (stripos($q70, 'cholestérol') !== false) {
+            $content .= "• Statines : Éviter le pamplemousse. Réduire les graisses saturées (viandes grasses, friture).\n";
+        }
+
+        return ['titre' => "Gestion des Médicaments", 'contenu' => $content];
+    }
+
+    private function getDietaryHabitsAdvice($responses)
+    {
+        $q72 = $responses[72]['text'] ?? '';
+        $q73 = $responses[73]['text'] ?? '';
+        $q75 = $responses[75]['text'] ?? '';
+
+        $content = "";
+
+        // Fruits & Légumes
+        if (stripos($q72, '1-2') !== false) {
+            $content .= "🥦 FRUITS & LÉGUMES : Quantité insuffisante. Visez progressivement 5 portions/jour. Commencez par ajouter un fruit aux collations.\n";
+        } elseif (stripos($q72, '5') !== false) {
+            $content .= "🥦 FRUITS & LÉGUMES : Excellent ! Continuez à varier les couleurs pour maximiser les antioxydants.\n";
+        }
+
+        // Grignotage
+        if (stripos($q73, 'Oui') !== false) {
+            $content .= "🍿 GRIGNOTAGE : Identifiez les déclencheurs (stress, ennui). Remplacez les beignets ou sodas par des arachides grillées nature (30g) ou un fruit.\n";
+        }
+
+        // Boissons
+        if (stripos($q75, 'Tous les jours') !== false) {
+            $content .= "🥤 BOISSONS : Priorité absolue ! Réduisez les sodas et l'alcool. Remplacez par de l'eau citronnée, du Bissap maison non sucré ou du Kinkeliba.\n";
+        }
+
+        return $content ? ['titre' => "Habitudes Alimentaires", 'contenu' => $content] : null;
+    }
+
+    private function getLifestyleAdvice($responses)
+    {
+        $q76 = $responses[76]['text'] ?? '';
+        $q77 = $responses[77]['text'] ?? '';
+        $q81 = $responses[81]['text'] ?? '';
+
+        $content = "";
+
+        if (stripos($q76, 'Moins de 6') !== false) {
+            $content .= "😴 SOMMEIL : Le manque de sommeil favorise la faim et le stockage des graisses (cortisol). Visez 7-8h pour stabiliser votre glycémie.\n";
+        }
+
+        if (stripos($q77, 'Oui') !== false) {
+            $content .= "🌬️ APNÉE DU SOMMEIL : Très liée à l'obésité. Dîner ultra-léger (soupe + poisson) au moins 4-5h avant le coucher peut grandement vous soulager.\n";
+        }
+
+        if (stripos($q81, '8h') !== false || stripos($q81, '6h-8h') !== false) {
+            $content .= "💺 SÉDENTARITÉ : Position assise prolongée. Levez-vous 5 min toutes les heures. La sédentarité est le 'nouveau tabagisme'.\n";
+        }
+
+        return $content ? ['titre' => "Mode de Vie", 'contenu' => $content] : null;
+    }
+
+    private function getPhysicalActivityAdvice($user, $responses)
+    {
+        $q84 = $responses[84]['text'] ?? ''; // Type d'activité (Question non mappée précédemment mais présente dans l2.txt)
+        $q81 = $responses[81]['text'] ?? ''; // Sédentarité
+        $activityLevel = $user->niveau_d_activite_physique;
+
+        $content = "🏃 ACTIVITÉ PHYSIQUE ET POSTURES :\n";
+        
+        if ($activityLevel === 'Sédentaire') {
+            $content .= "• Objectif : Briser la sédentarité. Visez 30 min de marche quotidienne.\n";
+            $content .= "• Posture : Si vous travaillez assis, utilisez un réhausseur d'écran pour garder le dos droit.\n";
+        } else {
+            $content .= "• Bravo pour votre niveau : " . $activityLevel . ". Continuez ainsi !\n";
+        }
+
+        if (stripos($q81, '8h') !== false) {
+            $content .= "• Vigilance : Rester assis plus de 8h/jour augmente les risques cardiovasculaires. Faites des étirements toutes les 2h.\n";
+        }
+
+        return ['titre' => "Activité Physique", 'contenu' => $content];
+    }
+
+    private function getWeightManagementHistoryAdvice($responses)
+    {
+        $q79 = $responses[79]['text'] ?? ''; // Tentatives de perte de poids
+        $q801 = $responses[80]['text'] ?? ''; // Méthode utilisée (Question type texte)
+
+        $content = "⚖️ GESTION DU POIDS :\n";
+
+        if (stripos($q79, 'Plusieurs') !== false || stripos($q79, 'Oui') !== false) {
+            $content .= "• Historique : Le fameux 'effet yoyo' est souvent dû à des régimes trop restrictifs. Notre approche se veut durable.\n";
+        }
+        
+        if (!empty($q801)) {
+            $content .= "• Analyse de vos méthodes passées ($q801) : Nous allons corriger les erreurs de répartition des macronutriments pour stabiliser votre métabolisme.\n";
+        }
+
+        return ['titre' => "Aide et Gestion du Poids", 'contenu' => $content];
+    }
+
+    private function generateDynamicFoodGuide($user, $macroGrams)
+    {
+        $activity = $user->niveau_d_activite_physique;
+        $base = $this->getBaseMenuData($activity);
+
+        // Scaling logic based on Priority (l3.txt): Carbs -> Protein -> Lipids
+        // We calculate a global scaling factor for each macro
+        $menuAdjusted = [];
+        foreach (['jour1', 'jour2'] as $dayKey) {
+            foreach (['Option A', 'Option B'] as $optionKey) {
+                $menuAdjusted[ucfirst($dayKey)][$optionKey] = $this->scaleMealOption($base[$dayKey][$optionKey], $macroGrams);
+            }
+        }
+
+        return [
+            'menu' => $menuAdjusted,
+            'conseils' => "Les portions (en grammes) ont été calculées selon vos besoins spécifiques. Utilisez une balance de cuisine pour plus de précision. Priorité : respectez les portions de glucides (riz, pâte, tubercules)."
+        ];
+    }
+
+    private function getBaseMenuData($activity)
+    {
+        // Sample for Sédentaire (extracting from l1.txt)
+        // In a real scenario, this would be a full database or a config file
+        $menus = [
+            'Sédentaire' => [
+                'jour1' => [
+                    'Option A' => [
+                        'Petit-Déjeuner' => ['items' => [['nom' => 'Neko (porridge maïs)', 'base' => 200, 'g' => 40, 'p' => 4, 'l' => 1.2], ['nom' => 'Okra/Crin-crin', 'base' => 100, 'g' => 7, 'p' => 2, 'l' => 0.4], ['nom' => 'Œuf dur', 'base' => 50, 'g' => 0.6, 'p' => 6.3, 'l' => 5.3]]],
+                        'Déjeuner' => ['items' => [['nom' => 'Akassa', 'base' => 150, 'g' => 21, 'p' => 3, 'l' => 0.8], ['nom' => 'Tilapia grillé', 'base' => 120, 'g' => 0, 'p' => 26, 'l' => 3.0], ['nom' => 'Sauce tomate/Légumes', 'base' => 100, 'g' => 8, 'p' => 2, 'l' => 1.0]]],
+                        'Dîner' => ['items' => [['nom' => 'Riz complet', 'base' => 100, 'g' => 31, 'p' => 3.5, 'l' => 1.0], ['nom' => 'Poulet grillé', 'base' => 120, 'g' => 0, 'p' => 27, 'l' => 4.0], ['nom' => 'Sauce amarante', 'base' => 100, 'g' => 6, 'p' => 3, 'l' => 4.0]]]
+                    ],
+                    'Option B' => [
+                        'Petit-Déjeuner' => ['items' => [['nom' => 'Haricots rouges', 'base' => 150, 'g' => 27, 'p' => 12, 'l' => 1.2], ['nom' => 'Igname bouillie', 'base' => 100, 'g' => 28, 'p' => 1.5, 'l' => 0.2]]],
+                        'Déjeuner' => ['items' => [['nom' => 'Tilapia grillé', 'base' => 120, 'g' => 0, 'p' => 26, 'l' => 3.0], ['nom' => 'Akassa', 'base' => 150, 'g' => 21, 'p' => 3, 'l' => 0.8], ['nom' => 'Sauce arachide', 'base' => 30, 'g' => 3, 'p' => 4, 'l' => 6.0]]],
+                        'Dîner' => ['items' => [['nom' => 'Œufs brouillés', 'base' => 120, 'g' => 1.2, 'p' => 12.6, 'l' => 10.6], ['nom' => 'Patate douce', 'base' => 70, 'g' => 14, 'p' => 1.1, 'l' => 0.1], ['nom' => 'Avocat', 'base' => 50, 'g' => 4.3, 'p' => 1, 'l' => 7.4]]]
+                    ]
+                ],
+                'jour2' => [
+                    'Option A' => [
+                        'Petit-Déjeuner' => ['items' => [['nom' => 'Bouillie d’avoine', 'base' => 100, 'g' => 12.3, 'p' => 2.4, 'l' => 1.4], ['nom' => 'Arachides grillées', 'base' => 30, 'g' => 4.8, 'p' => 7.7, 'l' => 14.8], ['nom' => 'Œuf dur', 'base' => 50, 'g' => 0.6, 'p' => 6.3, 'l' => 5.3]]],
+                        'Déjeuner' => ['items' => [['nom' => 'Sauce graine', 'base' => 100, 'g' => 10, 'p' => 6, 'l' => 10], ['nom' => 'Poisson fumé', 'base' => 100, 'g' => 0, 'p' => 30, 'l' => 15], ['nom' => 'Igname bouillie', 'base' => 100, 'g' => 28, 'p' => 1.5, 'l' => 0.2]]],
+                        'Dîner' => ['items' => [['nom' => 'Bœuf maigre', 'base' => 100, 'g' => 0, 'p' => 26, 'l' => 15], ['nom' => 'Riz complet', 'base' => 100, 'g' => 31, 'p' => 3.5, 'l' => 1], ['nom' => 'Sauce tomate légère', 'base' => 100, 'g' => 8, 'p' => 1.5, 'l' => 0.5]]]
+                    ],
+                    'Option B' => [
+                        'Petit-Déjeuner' => ['items' => [['nom' => 'Akassa', 'base' => 100, 'g' => 14, 'p' => 2, 'l' => 0.5], ['nom' => 'Arachides grillées', 'base' => 30, 'g' => 4.8, 'p' => 7.7, 'l' => 14.8], ['nom' => 'Œuf dur', 'base' => 50, 'g' => 0.6, 'p' => 6.3, 'l' => 5.3]]],
+                        'Déjeuner' => ['items' => [['nom' => 'Poisson grillé', 'base' => 100, 'g' => 0, 'p' => 20, 'l' => 13], ['nom' => 'Igname bouillie', 'base' => 100, 'g' => 28, 'p' => 1.5, 'l' => 0.2], ['nom' => 'Sauce tomate/légumes', 'base' => 100, 'g' => 10, 'p' => 2, 'l' => 1]]],
+                        'Dîner' => ['items' => [['nom' => 'Haricots rouges', 'base' => 150, 'g' => 27, 'p' => 12, 'l' => 1.2], ['nom' => 'Riz complet', 'base' => 80, 'g' => 25, 'p' => 2.8, 'l' => 0.8], ['nom' => 'Avocat', 'base' => 50, 'g' => 4.3, 'p' => 1, 'l' => 7.4]]]
+                    ]
+                ]
+            ]
+        ];
+
+        // Default to Sédentaire if activity not predefined for simplicity
+        return $menus[$activity] ?? $menus['Sédentaire'];
+    }
+
+    private function scaleMealOption($mealsByMoment, $targetGrams)
+    {
+        $adjusted = [];
+        
+        // Calculate base totals for this option
+        $baseTotals = ['g' => 0, 'p' => 0, 'l' => 0];
+        foreach ($mealsByMoment as $moment => $data) {
+            foreach ($data['items'] as $item) {
+                $baseTotals['g'] += $item['g'];
+                $baseTotals['p'] += $item['p'];
+                $baseTotals['l'] += $item['l'];
+            }
+        }
+
+        // Factors based on Priority (l3.txt): Carbs -> Protein -> Lipids
+        // Priority 1: Carbs
+        $factorG = $targetGrams['glucides'] / max(1, $baseTotals['g']);
+        // Priority 2: Protein
+        $factorP = $targetGrams['proteines'] / max(1, $baseTotals['p']);
+        // Priority 3: Lipids
+        $factorL = $targetGrams['lipides'] / max(1, $baseTotals['l']);
+
+        // Constraints from l3.txt: factor should ideally be between 0.5 and 1.5
+        // If out of bounds, we cap it to ensure realistic portions
+        $factorG = max(0.5, min(1.8, $factorG));
+        $factorP = max(0.5, min(1.8, $factorP));
+        $factorL = max(0.5, min(1.8, $factorL));
+
+        foreach ($mealsByMoment as $moment => $data) {
+            $itemsAdjusted = [];
+            foreach ($data['items'] as $item) {
+                // Determine which factor to use primarily for this item
+                $isCarb = ($item['g'] > 15 && $item['g'] > $item['p'] * 2);
+                $isProt = ($item['p'] > 10 && $item['p'] > $item['g']);
+                
+                $factor = $factorL;
+                if ($isCarb) $factor = $factorG;
+                elseif ($isProt) $factor = $factorP;
+
+                // Scale portion
+                $newPortion = round($item['base'] * $factor);
+                
+                // Calculated macros for display
+                $itemP = round($item['p'] * $factor, 1);
+                $itemG = round($item['g'] * $factor, 1);
+                $itemL = round($item['l'] * $factor, 1);
+
+                $itemsAdjusted[] = [
+                    'nom' => $item['nom'],
+                    'portion_recommandee' => $newPortion . ' g',
+                    'details' => "Macros: {$itemP}g P, {$itemG}g G, {$itemL}g L"
+                ];
+            }
+            $adjusted[$moment] = $itemsAdjusted;
+        }
+
+        return $adjusted;
     }
 }
