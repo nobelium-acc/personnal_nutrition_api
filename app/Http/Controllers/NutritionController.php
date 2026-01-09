@@ -10,9 +10,16 @@ use App\Mail\RthWarningMail;
 use App\Mail\ImgInconsistencyMail;
 
 use Illuminate\Support\Facades\DB;
+use App\Services\NutritionDataService;
 
 class NutritionController extends Controller
 {
+    protected $nutritionDataService;
+
+    public function __construct(NutritionDataService $nutritionDataService)
+    {
+        $this->nutritionDataService = $nutritionDataService;
+    }
     /**
      * @OA\Post(
      *     path="/api/nutrition/calculate",
@@ -222,7 +229,7 @@ class NutritionController extends Controller
 
         // NEW: Generate Intervention Plan and Food Guide
         $planIntervention = $this->generateNutritionInterventionPlan($user, $metrics, $responsesMap, $pathologies);
-        $menuInfo = $this->generateDynamicFoodGuide($user, $macros['grammes']);
+        $guideData = $this->generateDynamicFoodGuide($user, $macros['grammes']);
 
         return response()->json([
             'success' => true,
@@ -250,8 +257,9 @@ class NutritionController extends Controller
                 'utilisation' => 'À remplir chaque fin de semaine (par ex. dimanche matin) pour surveiller les tendances : stagnation, fatigue, besoin d’ajustement.'
             ],
             'plan_intervention' => $planIntervention,
-            'menu_journalier' => $menuInfo['menu'],
-            'conseils_personnalises' => $menuInfo['conseils']
+            'menu_journalier' => $guideData['menu_30_jours'],
+            'facteurs_ajustement' => $guideData['facteurs'],
+            'conseils_personnalises' => $guideData['conseils']
         ]);
     }
 
@@ -731,116 +739,150 @@ class NutritionController extends Controller
     private function generateDynamicFoodGuide($user, $macroGrams)
     {
         $activity = $user->niveau_d_activite_physique;
-        $base = $this->getBaseMenuData($activity);
+        $allMenus = $this->nutritionDataService->getMenus();
+        $base = $allMenus[$activity] ?? $allMenus['Sédentaire'];
 
-        // Scaling logic based on Priority (l3.txt): Carbs -> Protein -> Lipids
-        // We calculate a global scaling factor for each macro
-        $menuAdjusted = [];
-        foreach (['jour1', 'jour2'] as $dayKey) {
-            foreach (['Option A', 'Option B'] as $optionKey) {
-                $menuAdjusted[ucfirst($dayKey)][$optionKey] = $this->scaleMealOption($base[$dayKey][$optionKey], $macroGrams);
+        // Determine snack count from l3.txt
+        $snackCount = 0;
+        switch ($activity) {
+            case 'Sédentaire': $snackCount = rand(0, 1); break;
+            case 'Légèrement actif': $snackCount = 1; break;
+            case 'Modérément actif': $snackCount = rand(1, 2); break;
+            case 'Très actif': $snackCount = 2; break;
+            case 'Extrêmement actif': $snackCount = 2; break;
+        }
+
+        $menu30Jours = [];
+        $globalFactors = ['g' => 0, 'p' => 0, 'l' => 0];
+        $countDays = 30;
+
+        for ($i = 1; $i <= $countDays; $i++) {
+            $dayKey = ($i % 2 === 0) ? 'jour2' : 'jour1';
+            
+            // Randomly select Options for each meal
+            $dailyOptions = [
+                'Petit-déjeuner' => (rand(0, 1) ? 'Option A' : 'Option B'),
+                'Déjeuner' => (rand(0, 1) ? 'Option A' : 'Option B'),
+                'Dîner' => (rand(0, 1) ? 'Option A' : 'Option B')
+            ];
+
+            $dailyMeals = [];
+            foreach ($dailyOptions as $moment => $opt) {
+                $dailyMeals[$moment] = $base[$dayKey][$opt][$moment];
             }
+
+            // Add snacks if needed
+            $snacks = [];
+            if ($snackCount > 0 && isset($base['collations'])) {
+                $availableSnacks = $base['collations'];
+                $selectedSnacks = array_rand($availableSnacks, min($snackCount, count($availableSnacks)));
+                if (!is_array($selectedSnacks)) $selectedSnacks = [$selectedSnacks];
+                
+                foreach ($selectedSnacks as $index) {
+                    $snacks[] = $availableSnacks[$index];
+                }
+            }
+
+            $scalingResult = $this->scaleMealOption($dailyMeals, $macroGrams, $snacks);
+            
+            $menu30Jours[] = [
+                'jour' => $i,
+                'type' => ucfirst($dayKey),
+                'repas' => $scalingResult['adjusted'],
+                'collations' => $scalingResult['snacks']
+            ];
+
+            // Accrue factors for average
+            $globalFactors['g'] += $scalingResult['factors']['glucides'];
+            $globalFactors['p'] += $scalingResult['factors']['proteines'];
+            $globalFactors['l'] += $scalingResult['factors']['lipides'];
         }
 
         return [
-            'menu' => $menuAdjusted,
-            'conseils' => "Les portions (en grammes) ont été calculées selon vos besoins spécifiques. Utilisez une balance de cuisine pour plus de précision. Priorité : respectez les portions de glucides (riz, pâte, tubercules)."
+            'menu_30_jours' => $menu30Jours,
+            'facteurs' => [
+                'glucides' => round($globalFactors['g'] / $countDays, 3),
+                'proteines' => round($globalFactors['p'] / $countDays, 3),
+                'lipides' => round($globalFactors['l'] / $countDays, 3),
+                'final' => round(($globalFactors['g'] + $globalFactors['p'] + $globalFactors['l']) / ($countDays * 3), 3)
+            ],
+            'conseils' => "Les portions (en grammes) ont été calculées selon vos besoins spécifiques sur 30 jours. Priorité : respectez les portions de glucides."
         ];
     }
 
-    private function getBaseMenuData($activity)
-    {
-        // Sample for Sédentaire (extracting from l1.txt)
-        // In a real scenario, this would be a full database or a config file
-        $menus = [
-            'Sédentaire' => [
-                'jour1' => [
-                    'Option A' => [
-                        'Petit-Déjeuner' => ['items' => [['nom' => 'Neko (porridge maïs)', 'base' => 200, 'g' => 40, 'p' => 4, 'l' => 1.2], ['nom' => 'Okra/Crin-crin', 'base' => 100, 'g' => 7, 'p' => 2, 'l' => 0.4], ['nom' => 'Œuf dur', 'base' => 50, 'g' => 0.6, 'p' => 6.3, 'l' => 5.3]]],
-                        'Déjeuner' => ['items' => [['nom' => 'Akassa', 'base' => 150, 'g' => 21, 'p' => 3, 'l' => 0.8], ['nom' => 'Tilapia grillé', 'base' => 120, 'g' => 0, 'p' => 26, 'l' => 3.0], ['nom' => 'Sauce tomate/Légumes', 'base' => 100, 'g' => 8, 'p' => 2, 'l' => 1.0]]],
-                        'Dîner' => ['items' => [['nom' => 'Riz complet', 'base' => 100, 'g' => 31, 'p' => 3.5, 'l' => 1.0], ['nom' => 'Poulet grillé', 'base' => 120, 'g' => 0, 'p' => 27, 'l' => 4.0], ['nom' => 'Sauce amarante', 'base' => 100, 'g' => 6, 'p' => 3, 'l' => 4.0]]]
-                    ],
-                    'Option B' => [
-                        'Petit-Déjeuner' => ['items' => [['nom' => 'Haricots rouges', 'base' => 150, 'g' => 27, 'p' => 12, 'l' => 1.2], ['nom' => 'Igname bouillie', 'base' => 100, 'g' => 28, 'p' => 1.5, 'l' => 0.2]]],
-                        'Déjeuner' => ['items' => [['nom' => 'Tilapia grillé', 'base' => 120, 'g' => 0, 'p' => 26, 'l' => 3.0], ['nom' => 'Akassa', 'base' => 150, 'g' => 21, 'p' => 3, 'l' => 0.8], ['nom' => 'Sauce arachide', 'base' => 30, 'g' => 3, 'p' => 4, 'l' => 6.0]]],
-                        'Dîner' => ['items' => [['nom' => 'Œufs brouillés', 'base' => 120, 'g' => 1.2, 'p' => 12.6, 'l' => 10.6], ['nom' => 'Patate douce', 'base' => 70, 'g' => 14, 'p' => 1.1, 'l' => 0.1], ['nom' => 'Avocat', 'base' => 50, 'g' => 4.3, 'p' => 1, 'l' => 7.4]]]
-                    ]
-                ],
-                'jour2' => [
-                    'Option A' => [
-                        'Petit-Déjeuner' => ['items' => [['nom' => 'Bouillie d’avoine', 'base' => 100, 'g' => 12.3, 'p' => 2.4, 'l' => 1.4], ['nom' => 'Arachides grillées', 'base' => 30, 'g' => 4.8, 'p' => 7.7, 'l' => 14.8], ['nom' => 'Œuf dur', 'base' => 50, 'g' => 0.6, 'p' => 6.3, 'l' => 5.3]]],
-                        'Déjeuner' => ['items' => [['nom' => 'Sauce graine', 'base' => 100, 'g' => 10, 'p' => 6, 'l' => 10], ['nom' => 'Poisson fumé', 'base' => 100, 'g' => 0, 'p' => 30, 'l' => 15], ['nom' => 'Igname bouillie', 'base' => 100, 'g' => 28, 'p' => 1.5, 'l' => 0.2]]],
-                        'Dîner' => ['items' => [['nom' => 'Bœuf maigre', 'base' => 100, 'g' => 0, 'p' => 26, 'l' => 15], ['nom' => 'Riz complet', 'base' => 100, 'g' => 31, 'p' => 3.5, 'l' => 1], ['nom' => 'Sauce tomate légère', 'base' => 100, 'g' => 8, 'p' => 1.5, 'l' => 0.5]]]
-                    ],
-                    'Option B' => [
-                        'Petit-Déjeuner' => ['items' => [['nom' => 'Akassa', 'base' => 100, 'g' => 14, 'p' => 2, 'l' => 0.5], ['nom' => 'Arachides grillées', 'base' => 30, 'g' => 4.8, 'p' => 7.7, 'l' => 14.8], ['nom' => 'Œuf dur', 'base' => 50, 'g' => 0.6, 'p' => 6.3, 'l' => 5.3]]],
-                        'Déjeuner' => ['items' => [['nom' => 'Poisson grillé', 'base' => 100, 'g' => 0, 'p' => 20, 'l' => 13], ['nom' => 'Igname bouillie', 'base' => 100, 'g' => 28, 'p' => 1.5, 'l' => 0.2], ['nom' => 'Sauce tomate/légumes', 'base' => 100, 'g' => 10, 'p' => 2, 'l' => 1]]],
-                        'Dîner' => ['items' => [['nom' => 'Haricots rouges', 'base' => 150, 'g' => 27, 'p' => 12, 'l' => 1.2], ['nom' => 'Riz complet', 'base' => 80, 'g' => 25, 'p' => 2.8, 'l' => 0.8], ['nom' => 'Avocat', 'base' => 50, 'g' => 4.3, 'p' => 1, 'l' => 7.4]]]
-                    ]
-                ]
-            ]
-        ];
 
-        // Default to Sédentaire if activity not predefined for simplicity
-        return $menus[$activity] ?? $menus['Sédentaire'];
-    }
-
-    private function scaleMealOption($mealsByMoment, $targetGrams)
+    private function scaleMealOption($mealsByMoment, $targetGrams, $snacks = [])
     {
         $adjusted = [];
         
-        // Calculate base totals for this option
+        // Collation calculation
+        $snackG = 0; $snackP = 0; $snackL = 0;
+        $snacksAdjusted = [];
+        foreach ($snacks as $s) {
+            $snackG += $s['g'];
+            $snackP += $s['p'];
+            $snackL += $s['l'];
+            $snacksAdjusted[] = [
+                'nom' => $s['nom'],
+                'portion' => 'Portion standard',
+                'details' => "Macros: {$s['p']}g P, {$s['g']}g G, {$s['l']}g L"
+            ];
+        }
+
+        // Target for main meals (Priority Logic: subtract snacks first)
+        $mealTargetG = max(0, $targetGrams['glucides'] - $snackG);
+        $mealTargetP = max(0, $targetGrams['proteines'] - $snackP);
+        $mealTargetL = max(0, $targetGrams['lipides'] - $snackL);
+
+        // Calculate base totals for main meals
         $baseTotals = ['g' => 0, 'p' => 0, 'l' => 0];
-        foreach ($mealsByMoment as $moment => $data) {
-            foreach ($data['items'] as $item) {
+        foreach ($mealsByMoment as $moment => $items) {
+            foreach ($items as $item) {
                 $baseTotals['g'] += $item['g'];
                 $baseTotals['p'] += $item['p'];
                 $baseTotals['l'] += $item['l'];
             }
         }
 
-        // Factors based on Priority (l3.txt): Carbs -> Protein -> Lipids
-        // Priority 1: Carbs
-        $factorG = $targetGrams['glucides'] / max(1, $baseTotals['g']);
-        // Priority 2: Protein
-        $factorP = $targetGrams['proteines'] / max(1, $baseTotals['p']);
-        // Priority 3: Lipids
-        $factorL = $targetGrams['lipides'] / max(1, $baseTotals['l']);
+        // Factors based on Priority (l3.txt)
+        $factorG = $mealTargetG / max(1, $baseTotals['g']);
+        $factorP = $mealTargetP / max(1, $baseTotals['p']);
+        $factorL = $mealTargetL / max(1, $baseTotals['l']);
 
-        // Constraints from l3.txt: factor should ideally be between 0.5 and 1.5
-        // If out of bounds, we cap it to ensure realistic portions
-        $factorG = max(0.5, min(1.8, $factorG));
-        $factorP = max(0.5, min(1.8, $factorP));
-        $factorL = max(0.5, min(1.8, $factorL));
+        // Constraints: ideal 0.5 - 1.5, max 1.8
+        $factorG = max(0.4, min(1.8, $factorG));
+        $factorP = max(0.4, min(1.8, $factorP));
+        $factorL = max(0.4, min(1.8, $factorL));
 
-        foreach ($mealsByMoment as $moment => $data) {
+        foreach ($mealsByMoment as $moment => $items) {
             $itemsAdjusted = [];
-            foreach ($data['items'] as $item) {
-                // Determine which factor to use primarily for this item
-                $isCarb = ($item['g'] > 15 && $item['g'] > $item['p'] * 2);
-                $isProt = ($item['p'] > 10 && $item['p'] > $item['g']);
+            foreach ($items as $item) {
+                // Determine which macro dominates this ingredient
+                $isCarb = ($item['g'] > 15 && $item['g'] > $item['p'] * 1.5);
+                $isProt = ($item['p'] > 5 && $item['p'] > $item['g']);
                 
-                $factor = $factorL;
-                if ($isCarb) $factor = $factorG;
-                elseif ($isProt) $factor = $factorP;
+                $f = $factorL;
+                if ($isCarb) $f = $factorG;
+                elseif ($isProt) $f = $factorP;
 
-                // Scale portion
-                $newPortion = round($item['base'] * $factor);
-                
-                // Calculated macros for display
-                $itemP = round($item['p'] * $factor, 1);
-                $itemG = round($item['g'] * $factor, 1);
-                $itemL = round($item['l'] * $factor, 1);
-
+                $newPortion = round($item['base'] * $f);
                 $itemsAdjusted[] = [
                     'nom' => $item['nom'],
                     'portion_recommandee' => $newPortion . ' g',
-                    'details' => "Macros: {$itemP}g P, {$itemG}g G, {$itemL}g L"
+                    'details' => "Macros: ".round($item['p']*$f,1)."g P, ".round($item['g']*$f,1)."g G, ".round($item['l']*$f,1)."g L"
                 ];
             }
             $adjusted[$moment] = $itemsAdjusted;
         }
 
-        return $adjusted;
+        return [
+            'adjusted' => $adjusted,
+            'snacks' => $snacksAdjusted,
+            'factors' => [
+                'glucides' => $factorG,
+                'proteines' => $factorP,
+                'lipides' => $factorL
+            ]
+        ];
     }
 }
