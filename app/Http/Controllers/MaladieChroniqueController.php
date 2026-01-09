@@ -7,12 +7,16 @@ use App\Models\Utilisateur;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\NutritionController;
 
 class MaladieChroniqueController extends Controller
 {
-    public function __construct()
+    protected $nutritionController;
+
+    public function __construct(NutritionController $nutritionController)
     {
         $this->middleware('auth:api');
+        $this->nutritionController = $nutritionController;
     }
     
     /**
@@ -85,12 +89,17 @@ class MaladieChroniqueController extends Controller
             'type' => $maladieChronique->type
         ]);
 
+        // Trigger nutrition calculation and inconsistency checks
+        $calcResponse = $this->nutritionController->calculate($request);
+        $calcData = $calcResponse->getData(true);
+
         return response()->json([
             'success' => true,
-            'message' => 'Type de maladie chronique enregistré et associé à l\'utilisateur avec succès',
+            'message' => 'Type de maladie chronique enregistré et associé à l\'utilisateur avec succès. Calculs nutritionnels mis à jour.',
             'data' => [
                 'maladie_chronique' => $maladieChronique,
                 'utilisateur' => $utilisateur->only(['id', 'maladie_chronique_id']),
+                'nutrition_metrics' => $calcData
             ],
         ], 201);
     }
