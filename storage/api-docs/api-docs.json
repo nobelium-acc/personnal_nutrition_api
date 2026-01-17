@@ -580,29 +580,16 @@
                 ]
             }
         },
-        "/api/nutrition/recommendation": {
+        "/api/nutrition/recommandation": {
             "post": {
                 "tags": [
                     "Nutrition"
                 ],
                 "summary": "Obtenir des recommandations nutritionnelles personnalisées",
                 "description": "Calcule l'apport calorique quotidien et la répartition des macronutriments en fonction de l'objectif de l'utilisateur, de ses pathologies et de son niveau d'activité.",
-                "operationId": "7ff34cd0e4a5c7e662b0cc4076c9c82b",
+                "operationId": "34a61c3749e3dbbcf23839f9cc1554f4",
                 "requestBody": {
-                    "required": false,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "properties": {
-                                    "user_id": {
-                                        "type": "integer",
-                                        "example": 1
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
+                    "required": false
                 },
                 "responses": {
                     "200": {
