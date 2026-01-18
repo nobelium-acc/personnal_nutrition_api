@@ -13,9 +13,10 @@ class MenuGenerator
 
     public function __construct(array $userMacros, array $baseMenu, string $activity, int $days = 90, array $pathologies = [])
     {
-        $this->userMacros = $userMacros; // ['glucides', 'proteines', 'lipides']
-        $this->baseMenu = $baseMenu;
+        $this->userMacros = $userMacros; 
         $this->activity = $activity;
+        // Correctly filter base menu by activity level
+        $this->baseMenu = $baseMenu[$activity] ?? ($baseMenu['Sédentaire'] ?? []);
         $this->days = $days;
         $this->pathologies = $pathologies;
     }
