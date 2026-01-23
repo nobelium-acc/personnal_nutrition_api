@@ -352,7 +352,7 @@ class NutritionController extends Controller
 
         // Obesity logic
         $imgThreshold = $isMale ? 25 : 32;
-        $isObeseIMG = $img >= $imgThreshold;
+        $isObeseIMG = $img < $imgThreshold;
         $rthThreshold = $isMale ? 0.90 : 0.85;
         $isHighRTH = $rth > $rthThreshold;
         $isObeseIMC = $imc >= 30;

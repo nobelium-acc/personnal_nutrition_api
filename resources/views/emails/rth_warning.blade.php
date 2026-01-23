@@ -22,9 +22,6 @@
         <li>Maladies cardiovasculaires</li>
     </ul>
 
-    <h3>💡 Informations :</h3>
-    <p>Un RTH élevé est un indicateur important de santé métabolique. Vu vos antécédents après les calculs, Nous vous recommandons de répondre aux questionnaires de notre application en tenant compte de cette information afin que dans l'élaboration de votre plan nutritionnel, nous puissions vous proposer un accompagnement adapté à votre profil.</p>
-
     <p>Cordialement,<br>
     L’équipe Healing Nutrition</p>
 </body>
