@@ -15,10 +15,14 @@ use App\Services\NutritionDataService;
 class NutritionController extends Controller
 {
     protected $nutritionDataService;
+    protected $noPathologyNutritionDataService;
 
-    public function __construct(NutritionDataService $nutritionDataService)
-    {
+    public function __construct(
+        NutritionDataService $nutritionDataService,
+        \App\Services\NoPathologyNutritionDataService $noPathologyNutritionDataService
+    ) {
         $this->nutritionDataService = $nutritionDataService;
+        $this->noPathologyNutritionDataService = $noPathologyNutritionDataService;
     }
     /**
      * @OA\Post(
@@ -130,13 +134,14 @@ class NutritionController extends Controller
         }
 
         // Restriction to ID 1 (Obésité modérée) as requested by the user
-        // The advanced logic for questionnaires (Q66-Q91) is specific to this category.
-        if ($user->maladie_chronique_id != 1) {
-            return response()->json([
-                'success' => false, 
-                'message' => 'La logique de recommandation avancée est actuellement limitée aux profils avec obésité modérée (ID 1).'
-            ], 403);
-        }
+    // The advanced logic for questionnaires (Q66-Q91) is specific to this category.
+    // Also allowing users with no chronic disease ID (null or 0) for "no-pathology" logic.
+    if ($user->maladie_chronique_id != 1 && !empty($user->maladie_chronique_id)) {
+        return response()->json([
+            'success' => false, 
+            'message' => 'La logique de recommandation avancée est actuellement limitée aux profils avec obésité modérée (ID 1) ou sans pathologie déclarée.'
+        ], 403);
+    }
 
         // BMR/TDEE Calculation
         $metrics = $this->calculateBasicMetrics($user);
@@ -524,12 +529,12 @@ class NutritionController extends Controller
                 elseif ($activity === "Modérément actif") { $pProt=25; $pGlu=45; $pLip=25; }
                 elseif ($activity === "Très actif") { $pProt=25; $pGlu=45; $pLip=25; }
                 else { $pProt=25; $pGlu=45; $pLip=25; }
-            } else { // No pathology (Tableau 33)
+            } else { // No pathology (Tableau 33) - Updated from recap.txt
                 if ($activity === "Sédentaire") { $pProt=30; $pGlu=35; $pLip=35; }
-                elseif ($activity === "Légèrement actif") { $pProt=30; $pGlu=42; $pLip=28; }
-                elseif ($activity === "Modérément actif") { $pProt=30; $pGlu=48; $pLip=22; }
-                elseif ($activity === "Très actif") { $pProt=30; $pGlu=53; $pLip=17; }
-                else { $pProt=30; $pGlu=58; $pLip=12; }
+                elseif ($activity === "Légèrement actif") { $pProt=30; $pGlu=40; $pLip=30; }
+                elseif ($activity === "Modérément actif") { $pProt=27; $pGlu=45; $pLip=28; }
+                elseif ($activity === "Très actif") { $pProt=25; $pGlu=50; $pLip=25; }
+                else { $pProt=25; $pGlu=55; $pLip=20; }
             }
         }
 
@@ -622,10 +627,11 @@ class NutritionController extends Controller
         }
 
         if (!$pathologies['diabetes'] && !$pathologies['hypertension'] && !$pathologies['cardio']) {
-            $content .= "❌ SI NON - Aucun antécédent :\n";
+            $content .= "✅ SI NON - Aucun antécédent :\n";
             $content .= "• Maintenir une alimentation équilibrée actuelle.\n";
-            $content .= "• Surveiller les portions pour une perte de poids progressive.\n";
             $content .= "• Privilégier les aliments peu transformés et rester actif physiquement.\n";
+            $content .= "• Hydratation : Boire au moins 1.5L à 2L d'eau par jour.\n";
+            $content .= "• Sommeil : Viser 7 à 9 heures de sommeil réparateur pour favoriser le métabolisme.\n";
         }
 
         return ['titre' => $title, 'contenu' => $content];
@@ -923,7 +929,13 @@ class NutritionController extends Controller
 
     private function generateDynamicFoodGuide($user, $macroGrams, $pathologies)
     {
-        $generator = new \App\Services\MenuGenerator($macroGrams, $this->nutritionDataService->getMenus(), $user->niveau_d_activite_physique, 90, $pathologies);
+        $hasPathology = $pathologies['diabetes'] || $pathologies['hypertension'] || $pathologies['cardio'];
+        
+        $menus = $hasPathology 
+            ? $this->nutritionDataService->getMenus() 
+            : $this->noPathologyNutritionDataService->getMenus();
+
+        $generator = new \App\Services\MenuGenerator($macroGrams, $menus, $user->niveau_d_activite_physique, 90, $pathologies);
         $result = $generator->generate();
 
         return [
