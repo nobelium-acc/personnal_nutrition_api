@@ -560,38 +560,92 @@ class NutritionController extends Controller
     private function generateNutritionInterventionPlan($user, $metrics, $responses, $pathologies)
     {
         $sections = [];
+        $isFitness = false;
+        foreach ($user->reponse as $rep) {
+            if ($rep->question_id == 89 && stripos($rep->description ?: '', 'forme physique') !== false) {
+                $isFitness = true;
+                break;
+            }
+            if ($rep->question_id == 89 && $rep->question_possible_answer_id) {
+                $pa = DB::table('question_possible_answers')->where('id', $rep->question_possible_answer_id)->first();
+                if ($pa && stripos($pa->value, 'forme physique') !== false) {
+                    $isFitness = true;
+                    break;
+                }
+            }
+        }
 
         // 1. Antécédents & Diabète + RTH Constat
         $sections[] = $this->getAntecedentsAdvice($metrics, $responses, $pathologies);
 
-        // 2. Médicaments
+        // 2. Médicaments (Enriched)
         $sections[] = $this->getMedicationAdvice($responses);
 
-        // 3. Habitudes Alimentaires (Fruits/Légumes, Grignotage, Boissons)
+        // 3. Fitness Specific Advice (New)
+        if ($isFitness) {
+            $sections[] = $this->getFitnessAdvice();
+        }
+
+        // 4. Collation Table (New)
+        $sections[] = $this->getCollationAdvice($user->niveau_d_activite_physique);
+
+        // 5. Habitudes Alimentaires (Fruits/Légumes, Grignotage, Boissons)
         $sections[] = $this->getDietaryHabitsAdvice($responses);
 
-        // 4. Mode de vie (Sommeil, Apnée, Sédentarité)
+        // 6. Mode de vie (Sommeil, Apnée, Sédentarité)
         $sections[] = $this->getLifestyleAdvice($responses);
 
-        // 5. Comportement (Stress, Satiété)
+        // 7. Comportement (Stress, Satiété)
         $sections[] = $this->getBehavioralAdvicePlan($responses);
 
-        // 6. Activité Physique & Postures
+        // 8. Activité Physique & Postures
         $sections[] = $this->getPhysicalActivityAdvice($user, $responses);
 
-        // 7. Aide et Gestion du Poids (Historique)
+        // 9. Aide et Gestion du Poids (Historique)
         $sections[] = $this->getWeightManagementHistoryAdvice($responses);
 
-        // 8. Psychologique et Soutien
+        // 10. Psychologique et Soutien
         $sections[] = $this->getPsychologicalAdvice($responses);
 
-        // 9. Surveillance Santé
+        // 11. Surveillance Santé
         $sections[] = $this->getHealthMonitoringAdvice($responses);
 
-        // 10. Principes Transversaux et Encouragements
+        // 12. Principes Transversaux et Encouragements
         $sections[] = $this->getTransversalAdvice();
 
         return array_filter($sections);
+    }
+
+    private function getFitnessAdvice()
+    {
+        $content = "🌟 CONSEILS TRANSVERSAUX POUR LA FORME PHYSIQUE :\n\n";
+        $content .= "💧 HYDRATATION : Objectif 2-3L eau/jour. Verre au réveil, avant chaque repas, et pendant l'effort.\n";
+        $content .= "😴 SOMMEIL : 7-8h/nuit essentiels pour la récupération musculaire et la régulation hormonale.\n";
+        $content .= "🧘 GESTION DU STRESS : Méditation, respiration ou activité physique douce pour abaisser le cortisol.\n";
+        $content .= "👫 SOUTIEN SOCIAL : Impliquez vos proches ou rejoignez un groupe de marche/sport.\n";
+        $content .= "📊 SUIVI : Pesée hebdomadaire et prise de mesures (taille, hanches) une fois par mois.\n";
+        $content .= "⏳ PATIENCE : Visez une progression durable (0.5 - 1kg/semaine max). Les résultats pérennes prennent du temps.\n";
+
+        return ['titre' => "Optimisation de la Forme Physique", 'contenu' => $content];
+    }
+
+    private function getCollationAdvice($activity)
+    {
+        $table = [
+            "Sédentaire" => "0 – 1 collation / jour",
+            "Légèrement actif" => "1 collation / jour",
+            "Modérément actif" => "1 – 2 collations / jour",
+            "Très actif" => "2 collations / jour",
+            "Extrêmement actif" => "2 collations (nécessaires) / jour"
+        ];
+
+        $recommendation = $table[$activity] ?? "1 – 2 collations / jour";
+        
+        $content = "🍎 GESTION DES COLLATIONS :\n";
+        $content .= "En fonction de votre niveau d'activité ($activity), nous recommandons : **$recommendation**.\n";
+        $content .= "Privilégiez les fruits frais, les noix de cajou nature ou un œuf dur.\n";
+
+        return ['titre' => "Structure des Repas", 'contenu' => $content];
     }
 
     private function getAntecedentsAdvice($metrics, $responses, $pathologies)
@@ -647,55 +701,60 @@ class NutritionController extends Controller
             $content .= "• Prévention pure par l'alimentation et surveillance régulière de la glycémie.\n";
             $content .= "• Favoriser les glucides à IG bas et répartir les apports sur la journée.\n";
             $content .= "• Éviter les sucres rapides et augmenter les fibres.\n";
+            $content .= "• Repas type : Riz complet + sauce tomate maison + poulet + légumes variés.\n";
             return ['titre' => "Adaptations liées aux Médicaments", 'contenu' => $content];
         }
 
-        $content = "💊 ADAPTATIONS LIÉES À VOS MÉDICAMENTS (WWW.txt) :\n\n";
+        $content = "💊 ADAPTATIONS LIÉES À VOS MÉDICAMENTS :\n\n";
         $combinedText = $q70 . ' ' . $q69;
 
-        // TYPE 1 : Glycémie
+        // TYPE 1 : Glycémie / Metformine
         if (preg_match('/Metformine|Glimepiride|Gliclazide|Sitagliptine|Empagliflozine|Dapagliflozine|Liraglutide|Semaglutide/i', $combinedText)) {
-            $content .= "🟦 MÉDICAMENTS POUR BAISSER LA GLYCÉMIE :\n";
-            $content .= "• Metformine : prendre pendant/après repas (éviter nausées).\n";
-            $content .= "• Éviter repas trop riches en graisses.\n";
-            $content .= "• Soutien SGLT2 : Boire beaucoup d'eau (surtout si Empagliflozine).\n\n";
+            $content .= "🟦 RÉGULATION DE LA GLYCÉMIE :\n";
+            if (stripos($combinedText, 'Metformine') !== false) {
+                $content .= "• **Metformine** : Prendre impérativement AU MILIEU du repas pour réduire les troubles digestifs.\n";
+                $content .= "• Repas suggéré : Riz complet + sauce légumes + poisson + salade.\n";
+                $content .= "• Éviter les repas trop gras qui aggravent les nausées.\n";
+            }
+            $content .= "• Soutien SGLT2 (Dapagliflozine, etc.) : Hydratation accrue (2.5L/jour).\n\n";
         }
 
         // TYPE 2 : Insuline
-        if (preg_match('/Insuline|Humalog|Lantus|Tresiba/i', $combinedText)) {
-            $content .= "🟨 INSULINE :\n";
-            $content .= "• Respecter les horaires fixes des repas et compter précisément les glucides.\n";
-            $content .= "🎒 KIT URGENCE HYGOGLYCÉMIE : Toujours avoir sur soi : 3 morceaux de sucre, 150ml de jus d'orange, ou 2-3 biscuits secs locaux.\n\n";
+        if (preg_match('/Insuline|Humalog|Novorapid|Lantus|Tresiba/i', $combinedText)) {
+            $content .= "🟨 INSULINE (RÈGLE ABSOLUE) :\n";
+            $content .= "• **Injection rapide** : MANGER impérativement dans les 15-30 min suivant l'injection.\n";
+            $content .= "• Portions de glucides FIXES et RÉGULIÈRES (ex: Akassa 150g ou Riz 150g cuit).\n";
+            $content .= "• Collations (10h, 16h, 22h) obligatoires pour éviter l'hypoglycémie.\n";
+            $content .= "🎒 KIT URGENCE : Toujours avoir 3 morceaux de sucre + jus d'orange sur soi.\n\n";
         }
 
-        // TYPE 3 : Perte de poids
-        if (preg_match('/Orlistat|Liraglutide|Semaglutide|Saxenda|Wegovy/i', $combinedText)) {
-            $content .= "🟧 MÉDICAMENTS POUR PERDRE DU POIDS :\n";
-            if (stripos($combinedText, 'Orlistat') !== false) {
-                $content .= "• Orlistat : Limiter graisses à 15g/repas. Prendre des multivitamines.\n";
+        // TYPE 3 : Tension / Diurétiques
+        if (preg_match('/IEC|Ramipril|ARA2|Losartan|Bêta-bloquants|Bisoprolol|Diurétiques|Furosémide/i', $combinedText)) {
+            $content .= "🟥 TENSION ARTÉRIELLE :\n";
+            if (preg_match('/Diurétiques|Furosémide/i', $combinedText)) {
+                $content .= "• **Diurétiques** : Risque de perte de potassium. Augmenter : bananes, avocat, oranges, épinards.\n";
             }
-            if (preg_match('/Liraglutide|Semaglutide/i', $combinedText)) {
-                $content .= "• Liraglutide/Semaglutide : Manger lentement. Si nausées : éviter gras et épices fortes.\n";
+            if (preg_match('/IEC|Ramipril|ARA2|Losartan/i', $combinedText)) {
+                $content .= "• **IEC/ARA2** : Attention, ne pas surconsommer de potassium sans avis médical.\n";
             }
-            $content .= "\n";
-        }
-
-        // TYPE 4 : Tension
-        if (preg_match('/IEC|Ramipril|ARA2|Losartan|Bêta-bloquants|Bisoprolol|Diurétiques/i', $combinedText)) {
-            $content .= "🟥 MÉDICAMENTS POUR LA TENSION ARTÉRIELLE :\n";
-            $content .= "• Limiter le sel. Boire suffisamment d'eau.\n";
-            $content .= "• Favoriser le potassium (banane, épinards, avocat).\n";
             if (stripos($combinedText, 'Bêta-bloquants') !== false) {
-                $content .= "• Attention Bêta-bloquants : peuvent masquer les signes d'hypoglycémie.\n";
+                $content .= "• **Bêta-bloquants** : Attention, ils masquent les signes cardiaques de l'hypoglycémie.\n";
             }
-            $content .= "\n";
+            $content .= "• Sel : ZÉRO ajouté. Utiliser épices (gingembre, ail, oignon).\n\n";
         }
 
-        // TYPE 5 : Cholestérol
+        // TYPE 4 : Cholestérol
         if (preg_match('/Statines|Atorvastatine|Simvastatine|cholestérol/i', $combinedText)) {
-            $content .= "🟩 MÉDICAMENTS POUR LE CHOLESTÉROL :\n";
-            $content .= "• Prendre le soir. ÉVITER LE PAMPLEMOUSSE.\n";
-            $content .= "• Favoriser oméga-3 et fibres solubles.\n\n";
+            $content .= "🟩 CHOLESTÉROL (STATINES) :\n";
+            $content .= "• **INTERDICTION ABSOLUE : Pamplemousse** (fruit et jus). Risque d'interaction dangereuse.\n";
+            $content .= "• Aliments anti-cholestérol : Avoine, haricots rouges, maquereau, sardines.\n";
+            $content .= "• Limiter l'huile de palme rouge et les viandes grasses.\n\n";
+        }
+
+        // TYPE 5 : Perte de poids (Orlistat)
+        if (stripos($combinedText, 'Orlistat') !== false) {
+            $content .= "🟧 ORLISTAT (Xenical) :\n";
+            $content .= "• Bloque 30% des graisses : Limiter les graisses à 15g par repas pour éviter les coliques.\n\n";
         }
 
         return ['titre' => "Gestion des Médicaments", 'contenu' => $content];
