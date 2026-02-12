@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use App\Models\Reponse;
+use Illuminate\Support\Facades\Auth;
 
 class RetrieveUserResponses
 {
@@ -18,7 +19,7 @@ class RetrieveUserResponses
     public function handle(Request $request, Closure $next)
     {
         // Récupérer l'utilisateur ID depuis la requête (ou session si l'utilisateur est connecté)
-        $utilisateurId = $request->input('utilisateur_id');
+        $utilisateurId = $request->input('utilisateur_id') ?? Auth::id();
 
         if (!$utilisateurId) {
             return response()->json([

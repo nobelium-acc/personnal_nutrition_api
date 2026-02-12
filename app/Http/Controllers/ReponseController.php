@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 
+
 /**
  * @OA\Tag(
  *     name="Réponses",
@@ -41,7 +42,7 @@ class ReponseController extends Controller
     public function index(Request $request)
     {
         $utilisateur = Auth::user();
-
+  
         if (!$utilisateur) {
              return response()->json([
                 'success' => false,
