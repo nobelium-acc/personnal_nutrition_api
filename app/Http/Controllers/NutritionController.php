@@ -364,6 +364,15 @@ class NutritionController extends Controller
         $fullPath = $path . '/' . $fileName;
         $pdf->save($fullPath);
 
+        // Save/Update database record
+        \App\Models\PlanNutritionnel::updateOrCreate(
+            ['utilisateur_id' => $user->id],
+            [
+                'description' => 'Guide nutritionnel de 90 jours généré le ' . date('d/m/Y'),
+                'pdf_path' => 'storage/pdfs/' . $fileName
+            ]
+        );
+
         // Send Email
         if ($user->email) {
             try {
@@ -377,6 +386,50 @@ class NutritionController extends Controller
         // Return URL (Assuming storage:link is run or a route exists to serve storage)
         // For local dev, simpler to just return path or asset url if public
         return url('storage/pdfs/' . $fileName);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/api/nutrition/download-stored-pdf",
+     *     summary="Télécharger le dernier Guide Nutritionnel enregistré",
+     *     description="Récupère et télécharge le dernier fichier PDF généré enregistré en base de données pour l'utilisateur connecté.",
+     *     tags={"Nutrition"},
+     *     security={{"BearerToken":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Fichier PDF",
+     *         @OA\MediaType(
+     *             mediaType="application/pdf"
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Plan non trouvé"
+     *     )
+     * )
+     */
+    public function downloadStoredPdf(Request $request)
+    {
+        $userId = auth()->id();
+        $plan = \App\Models\PlanNutritionnel::where('utilisateur_id', $userId)->first();
+
+        if (!$plan || !$plan->pdf_path) {
+            return response()->json(['success' => false, 'message' => 'Aucun plan nutritionnel trouvé ou généré pour cet utilisateur.'], 404);
+        }
+
+        $filePath = public_path($plan->pdf_path);
+
+        if (!file_exists($filePath)) {
+            // Tentative via storage_path si public_path échoue (dépend de la config symlink)
+            $storagePath = storage_path('app/public/' . str_replace('storage/', '', $plan->pdf_path));
+            if (file_exists($storagePath)) {
+                $filePath = $storagePath;
+            } else {
+                return response()->json(['success' => false, 'message' => 'Le fichier PDF n\'existe plus sur le serveur.'], 404);
+            }
+        }
+
+        return response()->download($filePath, 'Guide_Nutritionnel_' . $userId . '.pdf');
     }
 
     /**
