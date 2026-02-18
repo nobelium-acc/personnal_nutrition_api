@@ -580,16 +580,29 @@
                 ]
             }
         },
-        "/api/nutrition/recommandation": {
+        "/api/nutrition/recommendation": {
             "post": {
                 "tags": [
                     "Nutrition"
                 ],
                 "summary": "Obtenir des recommandations nutritionnelles personnalisées",
                 "description": "Calcule l'apport calorique quotidien et la répartition des macronutriments en fonction de l'objectif de l'utilisateur, de ses pathologies et de son niveau d'activité.",
-                "operationId": "34a61c3749e3dbbcf23839f9cc1554f4",
+                "operationId": "7ff34cd0e4a5c7e662b0cc4076c9c82b",
                 "requestBody": {
-                    "required": false
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "user_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
                 },
                 "responses": {
                     "200": {
@@ -629,6 +642,40 @@
                                     "type": "object"
                                 }
                             }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        },
+        "/api/nutrition/download-pdf": {
+            "get": {
+                "tags": [
+                    "Nutrition"
+                ],
+                "summary": "Télécharger le Guide Nutritionnel en PDF",
+                "description": "Génère et télécharge le guide nutritionnel complet (Profil, Calculs, Recommandations, Plan 90 jours) au format PDF.",
+                "operationId": "3f5dd95456589a320b2435c42105b929",
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "description": "ID de l'utilisateur (optionnel pour admin)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Fichier PDF",
+                        "content": {
+                            "application/pdf": {}
                         }
                     }
                 },

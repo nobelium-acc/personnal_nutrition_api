@@ -11,6 +11,12 @@ class MenuGenerator
 
     protected array $pathologies;
 
+    // Flattened meal pools
+    protected array $breakfasts = [];
+    protected array $lunches = [];
+    protected array $dinners = [];
+    protected array $collations = [];
+
     public function __construct(array $userMacros, array $baseMenu, string $activity, int $days = 90, array $pathologies = [])
     {
         $this->userMacros = $userMacros; 
@@ -19,6 +25,29 @@ class MenuGenerator
         $this->baseMenu = $baseMenu[$activity] ?? ($baseMenu['Sédentaire'] ?? []);
         $this->days = $days;
         $this->pathologies = $pathologies;
+
+        $this->flattenMeals();
+    }
+
+    protected function flattenMeals()
+    {
+        // Extract all unique meal options from the base menu structure
+        foreach (['jour1', 'jour2'] as $day) {
+            if (!isset($this->baseMenu[$day])) continue;
+            
+            foreach (['Option A', 'Option B'] as $option) {
+                if (!isset($this->baseMenu[$day][$option])) continue;
+                
+                $meals = $this->baseMenu[$day][$option];
+                if (isset($meals['Petit-déjeuner'])) $this->breakfasts[] = $meals['Petit-déjeuner'];
+                if (isset($meals['Déjeuner'])) $this->lunches[] = $meals['Déjeuner'];
+                if (isset($meals['Dîner'])) $this->dinners[] = $meals['Dîner'];
+            }
+        }
+
+        if (isset($this->baseMenu['collations'])) {
+            $this->collations = $this->baseMenu['collations'];
+        }
     }
 
     /**
@@ -29,22 +58,77 @@ class MenuGenerator
         $menu90Jours = [];
         $globalFactors = ['g' => 0, 'p' => 0, 'l' => 0];
 
+        // Generate all possible unique combinations indices [b, l, d]
+        $combinations = [];
+        $bCount = count($this->breakfasts);
+        $lCount = count($this->lunches);
+        $dCount = count($this->dinners);
+
+        if ($bCount === 0 || $lCount === 0 || $dCount === 0) {
+            // Fallback if data is missing
+            return ['menu' => [], 'average_factors' => $globalFactors];
+        }
+
+        for ($b = 0; $b < $bCount; $b++) {
+            for ($l = 0; $l < $lCount; $l++) {
+                for ($d = 0; $d < $dCount; $d++) {
+                    $combinations[] = [$b, $l, $d];
+                }
+            }
+        }
+
+        // Shuffle to randomize the order of unique days
+        shuffle($combinations);
+
         for ($i = 1; $i <= $this->days; $i++) {
-            $dayMenu = $this->generateDailyMenu();
-            
-            if (!$dayMenu) {
-                // Relâchement des contraintes si nécessaire
-                $dayMenu = $this->generateDailyMenu(true);
+            // Pick a combination. If we run out, loop back to the start (smart repetition)
+            $comboIndex = ($i - 1) % count($combinations);
+            $indices = $combinations[$comboIndex];
+
+            $dailyMeals = [
+                'Petit-déjeuner' => $this->breakfasts[$indices[0]],
+                'Déjeuner' => $this->lunches[$indices[1]],
+                'Dîner' => $this->dinners[$indices[2]]
+            ];
+
+            // Generate snacks
+            $snackCount = $this->getSnackCount();
+            $snacks = [];
+            if ($snackCount > 0 && !empty($this->collations)) {
+                // Random snacks each day to add variety even if main meals repeat
+                $selectedIndices = (array) array_rand($this->collations, min($snackCount, count($this->collations)));
+                foreach ($selectedIndices as $idx) {
+                    $snacks[] = $this->collations[$idx];
+                }
             }
 
-            // Sécurité pour éviter l'erreur array_merge si aucun menu n'est trouvé malgré tout
+            // Adjust portions
+            $dayMenu = $this->adjustDailyMenu($dailyMeals, $snacks);
+
             if (!$dayMenu) {
+                 // Retry with relaxed constraints
+                 $dayMenu = $this->adjustDailyMenu($dailyMeals, $snacks, true);
+            }
+
+            if (!$dayMenu) {
+                // Fallback: If still no combination works, we return the base combination without adjustment
+                // This ensures the user gets A menu, even if it's not perfectly macro-optimized
                 $dayMenu = [
-                    'type' => 'Standard (Non ajusté)',
-                    'repas' => ['Note' => 'Ajustement impossible pour ce jour avec les contraintes actuelles'],
-                    'collations' => [],
+                    'type' => 'Standard (Non optimisé)',
+                    'repas' => $dailyMeals,
+                    'collations' => $snacks,
                     'factors' => ['glucides' => 1.0, 'proteines' => 1.0, 'lipides' => 1.0]
                 ];
+                
+                // Add portions to the fallback menu consistent with the expected structure
+                foreach ($dayMenu['repas'] as $type => &$items) {
+                    foreach ($items as &$item) {
+                        $item['portion_recommandee'] = $item['portion'] ?? 'Standard';
+                    }
+                }
+                foreach ($dayMenu['collations'] as &$item) {
+                     $item['portion'] = $item['portion'] ?? 'Standard';
+                }
             }
 
             $menu90Jours[] = array_merge(['jour' => $i], $dayMenu);
@@ -64,71 +148,40 @@ class MenuGenerator
         ];
     }
 
-    protected function generateDailyMenu(bool $relax = false): ?array
+    protected function adjustDailyMenu(array $dailyMeals, array $snacks, bool $relax = false): ?array
     {
-        $maxRetries = 50;
-        $bestRelaxed = null;
-
+        // Wrapper for the scaling logic to handle single attempt
+        
         $isCardio = $this->pathologies['cardio'] ?? false;
         $isHypertension = $this->pathologies['hypertension'] ?? false;
 
-        for ($attempt = 0; $attempt < $maxRetries; $attempt++) {
-            $dayKey = (rand(0, 1) ? 'jour1' : 'jour2');
-            $base = $this->baseMenu;
+        if ($isHypertension && !$isCardio) {
+            // Stratégie Hypertension
+            $result = $this->scaleAndValidate($dailyMeals, $snacks, false);
+            if ($result) return $result;
 
-            $dailyMeals = [
-                'Petit-déjeuner' => $base[$dayKey]['Option ' . (rand(0, 1) ? 'A' : 'B')]['Petit-déjeuner'],
-                'Déjeuner' => $base[$dayKey]['Option ' . (rand(0, 1) ? 'A' : 'B')]['Déjeuner'],
-                'Dîner' => $base[$dayKey]['Option ' . (rand(0, 1) ? 'A' : 'B')]['Dîner']
-            ];
-
-            $snackCount = $this->getSnackCount();
-            $snacks = [];
-            if ($snackCount > 0 && isset($base['collations'])) {
-                $availableSnacks = $base['collations'];
-                $selectedIndices = (array) array_rand($availableSnacks, min($snackCount, count($availableSnacks)));
-                foreach ($selectedIndices as $idx) {
-                    $snacks[] = $availableSnacks[$idx];
-                }
-            }
-
-            if ($isHypertension && !$isCardio) {
-                // Stratégie Hypertension
-                $result = $this->scaleAndValidate($dailyMeals, $snacks, false);
-                if ($result) return $result;
-
+            if ($relax) {
                 $res1 = $this->scaleAndValidate($dailyMeals, $snacks, true, 1);
                 if ($res1) return $res1;
-
                 $res2 = $this->scaleAndValidate($dailyMeals, $snacks, true, 2);
                 if ($res2) return $res2;
-            } else {
-                // Stratégie Cardio / Défaut
-                if ($relax) {
-                    $result = $this->scaleAndValidate($dailyMeals, $snacks, true, 3);
-                    if ($result) return $result;
-                } else {
-                    $result = $this->scaleAndValidate($dailyMeals, $snacks, false);
-                    if ($result) return $result;
-
-                    $r1 = $this->scaleAndValidate($dailyMeals, $snacks, true, 1);
-                    if ($r1) return $r1;
-
-                    $r2 = $this->scaleAndValidate($dailyMeals, $snacks, true, 2);
-                    if ($r2) return $r2;
-
-                    $r3 = $this->scaleAndValidate($dailyMeals, $snacks, true, 3);
-                    if ($r3) return $r3;
-                }
             }
+        } else {
+            // Stratégie Cardio / Défaut
+            $result = $this->scaleAndValidate($dailyMeals, $snacks, false);
+            if ($result) return $result;
 
-            // Capture du meilleur résultat relaxé si aucun succès strict/partiel
-            if (!$bestRelaxed) {
-                $bestRelaxed = $this->scaleAndValidate($dailyMeals, $snacks, true, ($isHypertension && !$isCardio) ? 2 : 3);
+            if ($relax) {
+                $r1 = $this->scaleAndValidate($dailyMeals, $snacks, true, 1);
+                if ($r1) return $r1;
+                $r2 = $this->scaleAndValidate($dailyMeals, $snacks, true, 2);
+                if ($r2) return $r2;
+                $r3 = $this->scaleAndValidate($dailyMeals, $snacks, true, 3);
+                if ($r3) return $r3;
             }
         }
-
-        return $bestRelaxed;
+        
+        return null;
     }
 
     protected function getSnackCount(): int

@@ -47,6 +47,7 @@ Route::middleware(['auth:sanctum'])->group(function() {
     Route::delete('/reponses/{id}', [ReponseController::class, 'destroy']);
     Route::post('/nutrition/calculate', [NutritionController::class, 'calculate']);
     Route::post('/nutrition/recommandation', [NutritionController::class, 'recommendation']);
+    Route::get('/nutrition/download-pdf', [NutritionController::class, 'downloadPdf']);
 });
 
 Route::put('/user/{id}/update-maladie-chronique', [UtilisateurController::class, 'updateMaladieChronique']);
